@@ -1,0 +1,160 @@
+\documentclass[12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{siunitx}
+\usepackage{hyperref}
+\usepackage{caption}
+\usepackage{booktabs}
+\title{Física Numérica --- Tarea \#2\\Reporte de laboratorio}
+\author{Alumno: (tu nombre) \\ Curso: Física Numérica}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section*{Referencia}
+Este informe responde a las indicaciones de la Tarea \#2 (enunciado provisto). :contentReference[oaicite:1]{index=1}
+
+\section{Objetivos}
+\begin{itemize}
+  \item Reescribir expresiones susceptibles a \emph{cancelación sustractiva} para los argumentos indicados.
+  \item Implementar y comparar métodos de recursión hacia arriba y hacia abajo para calcular las funciones de Bessel esféricas $j_{\ell}(x)$ para los primeros 25 valores de $\ell$ en $x=0.1,\,1,\,10$.
+  \item Ajustar el programa para que al menos un método alcance error relativo $\le 10^{-10}$ y comparar errores relativos entre métodos.
+\end{itemize}
+
+\section{1. Cancelación sustractiva}
+La \emph{cancelación sustractiva} ocurre cuando restas dos números próximos y pierdes dígitos de precisión. Para evitarla se suelen reescribir las expresiones usando identidades algebraicas o series asintóticas.
+
+\subsection*{(a) \quad $\sqrt{x+1}-1$; \quad $x\approx 0$}
+Reescritura para evitar la resta directa:
+\[
+\sqrt{x+1}-1 = \frac{(\sqrt{x+1}-1)(\sqrt{x+1}+1)}{\sqrt{x+1}+1}
+= \frac{x}{\sqrt{x+1}+1}.
+\]
+Para $x\to 0$ la forma $\dfrac{x}{\sqrt{x+1}+1}$ evita cancelación al tener división por cantidad $\approx 2$.
+
+\subsection*{(b) \quad $\sin x - \sin y$; \quad $x\approx y$}
+Usando identidad trigonométrica:
+\[
+\sin x - \sin y = 2\cos\!\left(\frac{x+y}{2}\right)\sin\!\left(\frac{x-y}{2}\right).
+\]
+Si $x\approx y$ entonces $\sin\!\left(\frac{x-y}{2}\right)$ es pequeño pero no hay resta direc­ta de dos cantidades casi iguales: se reduce el problema numérico.
+
+\subsection*{(c) \quad $x^2 - y^2$; \quad $x\approx y$}
+Factorizando:
+\[
+x^2-y^2 = (x-y)(x+y).
+\]
+Multiplicar por $(x+y)$ conocido evita restar cuadrados casi iguales.
+
+\subsection*{(d) \quad $\dfrac{1-\cos x}{\sin x}$; \quad $x\approx 0$}
+Usando la identidad $1-\cos x = 2\sin^2(x/2)$:
+\[
+\frac{1-\cos x}{\sin x} = \frac{2\sin^2(x/2)}{\sin x} = \frac{2\sin(x/2)}{2\cos(x/2)} = \tan\!\left(\frac{x}{2}\right)\cdot \frac{\sin(x/2)}{\cos(x/2)}?
+\]
+Mejor proceder directamente:
+\[
+\frac{1-\cos x}{\sin x} = \frac{2\sin^2(x/2)}{2\sin(x/2)\cos(x/2)} = \tan\left(\frac{x}{2}\right).
+\]
+Así
+\[
+\frac{1-\cos x}{\sin x}=\tan\!\left(\frac{x}{2}\right),
+\]
+que para $x\to 0$ es estable (tiene expansión $\approx x/2$).
+
+(Nota: una forma alternativa es dividir numerador y denominador por $x$ y usar series.)
+
+\subsection*{(e) \quad $c = \sqrt{a^2 + b^2 - 2ab\cos\theta}$; \quad $a\approx b$, $|\theta|\ll 1$}
+Esta es la ley de cosenos. Cuando $a\approx b$ y $\theta$ pequeño, hay cancelación entre $a^2+b^2$ y $2ab\cos\theta$. Reescribimos usando factorización:
+\[
+c = \sqrt{(a-b)^2 + 2ab(1-\cos\theta)}.
+\]
+Y usando $1-\cos\theta = 2\sin^2(\theta/2)$:
+\[
+c = \sqrt{(a-b)^2 + 4ab\sin^2(\tfrac{\theta}{2})}.
+\]
+Si $a=b$ esta forma reduce al caso $c = 2a \sin(\tfrac{|\theta|}{2})$, totalmente estable. En el caso $a\approx b$ usar la forma anterior evita restas que anulan dígitos.
+
+\subsection*{Comentarios numéricos}
+En el código se muestran comparaciones numéricas entre evaluación directa y evaluación reescrita para ilustrar la ganancia en precisión.
+
+\section{2. Funciones de Bessel esféricas $j_\ell(x)$}
+\subsection{Definición y recurrencias}
+Las funciones de Bessel esféricas se definen (una forma) por
+\[
+j_\ell(x)=\sqrt{\frac{\pi}{2x}}J_{\ell+\tfrac12}(x),
+\]
+pero para cómputo recursivo se usan las recurrencias:
+\[
+\boxed{ \; j_{\ell+1}(x)=\frac{2\ell+1}{x}\,j_\ell(x)-j_{\ell-1}(x) \quad (\text{hacia arriba}) \;}
+\]
+\[
+\boxed{ \; j_{\ell-1}(x)=\frac{2\ell+1}{x}\,j_\ell(x)-j_{\ell+1}(x) \quad (\text{hacia abajo}) \;}
+\]
+
+\subsection{Método hacia arriba (up)}
+\begin{enumerate}
+  \item Se conocen $j_0(x)=\dfrac{\sin x}{x}$ y $j_1(x)=\dfrac{\sin x}{x^2}-\dfrac{\cos x}{x}$.
+  \item Aplicar la fórmula hacia arriba para obtener $j_2,\ldots,j_{L_{\max}}$.
+\end{enumerate}
+Este método es simple y preciso para órdenes $\ell$ no demasiado grandes comparado con $x$, pero puede volverse numéricamente inestable cuando $\ell$ crece mucho (dependiendo de $x$).
+
+\subsection{Método hacia abajo (down) con normalización}
+\begin{enumerate}
+  \item Elegir $L \gg L_{\max}$ (p.e. $L_{\text{start}} = L_{\max}+N_{\text{pad}}$ con $N_{\text{pad}}\approx 50$--$200$ dependiendo de $x$).
+  \item Poner valores arbitrarios iniciais, por ejemplo $y_{L_{\text{start}}+1}=0$, $y_{L_{\text{start}}}=1$.
+  \item Usar la recurrencia hacia abajo
+  \[
+  y_{\ell-1}=\frac{2\ell+1}{x}y_\ell - y_{\ell+1}
+  \]
+  hasta $\ell=0$. Los $y_\ell$ obtenidos son proporcionales a los $j_\ell(x)$ reales.
+  \item Normalizar toda la secuencia imponiendo
+  \[
+  \alpha = \frac{j_0(x)_{\text{exact}}}{y_0},
+  \quad \text{con } j_0(x)_{\text{exact}}=\frac{\sin x}{x},
+  \]
+  y entonces $j_\ell(x)=\alpha\, y_\ell$.
+\end{enumerate}
+Este procedimiento es numéricamente estable y suele producir resultados precisos incluso para órdenes grandes.
+
+\subsection{Ajuste para error relativo $\le 10^{-10}$}
+El parámetro a controlar es $N_{\text{pad}}$ (cuánto más grande, mejor la estabilidad de la normalización). En el código se incluye una búsqueda/ajuste automático que incrementa $N_{\text{pad}}$ hasta alcanzar el criterio de error relativo con respecto a una referencia (en nuestro caso la referencia es la evaluación con la normalización y $N_{\text{pad}}$ grande o la función de referencia explícita cuando está disponible).
+
+\subsection{Comparaciones y métricas}
+Para cada $x$ y cada $\ell$ imprimimos:
+\[
+\frac{\left|j_\ell^{(\text{up})}-j_\ell^{(\text{down})}\right|}
+{\left|j_\ell^{(\text{up})}\right|+\left|j_\ell^{(\text{down})}\right|}\quad\text{(medida simétrica)},
+\]
+y el \emph{error relativo} con respecto a la referencia.
+
+\section{Resultados (resumen)}
+En el archivo de salida (el programa) se muestran tablas con:
+\begin{itemize}
+  \item Valores de $j_\ell(x)$ calculados por el método \texttt{up} y por \texttt{down} para $\ell=0,\ldots,24$ y $x=\{0.1,\,1,\,10\}$.
+  \item Columnas con las diferencias absolutas y relativas, y la métrica solicitada:
+  \[
+  \frac{\ell\,|j_\ell^{\text{(up)}}-j_\ell^{\text{(down)}}|}{|j_\ell^{\text{(up)}}|+|j_\ell^{\text{(down)}}|}
+  \]
+  (seguí la forma pedida en el enunciado).
+\end{itemize}
+
+\section{Discusión y crítica}
+\begin{itemize}
+  \item Las reescrituras algebraicas para evitar cancelación son estándar y reducen significativamente la pérdida de precisión en los ejemplos numéricos provistos.
+  \item Para las funciones de Bessel esféricas, la técnica de recurrencia hacia abajo con normalización es la más robusta para obtener alta precisión en un rango amplio de $\ell$ y $x$. La elección del valor de partida $L_{\text{start}}$ (o el ``padding'') es crucial: valores demasiado pequeños degradan la precisión; valores mayores incrementan costo computacional pero garantizan precisión.
+  \item El método hacia arriba es simple y eficiente cuando $\ell\lesssim x$ pero puede producir errores acumulativos para $\ell\gg x$.
+\end{itemize}
+
+\section{Conclusiones}
+Se entregó una solución numérica completa que incluye reescrituras para evitar cancelación y la implementación de métodos up/down para $j_\ell(x)$ con criterios de precisión. El código adjunto permite reproducir todas las tablas y figuras solicitadas.
+
+\section*{Anexo: Instrucciones para ejecutar los códigos}
+\begin{enumerate}
+  \item Guardar el archivo \texttt{tarea2.py} (adjunto) en el directorio de trabajo.
+  \item Ejecutar con \texttt{python3 tarea2.py}. El programa imprimirá tablas y guardará (si se desea) archivos de salida.
+  \item El código está comentado y separado en secciones (cancelaciones, bessel up, bessel down, comparación).
+\end{enumerate}
+
+\end{document}

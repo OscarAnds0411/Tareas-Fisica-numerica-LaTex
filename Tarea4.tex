@@ -1,0 +1,271 @@
+\documentclass[10pt]{extarticle}
+
+\usepackage[spanish]{babel}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern,mathrsfs}
+\usepackage{amssymb}
+\usepackage{xparse}
+\usepackage[inline,shortlabels]{enumitem}
+\setlist{topsep=2pt,itemsep=2pt,parsep=0pt,partopsep=0pt}
+\usepackage[dvipsnames]{xcolor}
+\usepackage[utf8]{inputenc}
+\usepackage[a4paper,top=0.5in,bottom=0.2in,left=0.5in,right=0.5in,footskip=0.3in,includefoot]{geometry}
+\usepackage[most]{tcolorbox}
+\tcbuselibrary{minted} % tcolorbox minted library, required to use the "minted" tcb listing engine (this library is not loaded by the option [most])
+\usepackage{minted} % Allows input of raw code, such as Python code
+\usepackage[colorlinks]{hyperref} % ALWAYS load this package LAST
+\usepackage{listings}
+\lstset{
+    basicstyle=\ttfamily\footnotesize,
+    keywordstyle=\color{blue},
+    commentstyle=\color{gray},
+    stringstyle=\color{green!40!black},
+    showstringspaces=false,
+    numbers=left,
+    numberstyle=\tiny,
+    frame=single,
+    breaklines=true
+}
+
+% Custom tcolorbox style for Python code (not the code or the box it appears in, just the options for the box)
+\tcbset{
+    pythoncodebox/.style={
+        enhanced jigsaw,breakable,
+        colback=gray!10,colframe=gray!20!black,
+        boxrule=1pt,top=2pt,bottom=2pt,left=2pt,right=2pt,
+        sharp corners,before skip=10pt,after skip=10pt,
+        attach boxed title to top left,
+        boxed title style={empty,
+            top=0pt,bottom=0pt,left=2pt,right=2pt,
+            interior code={\fill[fill=tcbcolframe] (frame.south west)
+                --([yshift=-4pt]frame.north west)
+                to[out=90,in=180] ([xshift=4pt]frame.north west)
+                --([xshift=-8pt]frame.north east)
+                to[out=0,in=180] ([xshift=16pt]frame.south east)
+                --cycle;
+            }
+        },
+        title={#1}, % Argument of pythoncodebox specifies the title
+        fonttitle=\sffamily\bfseries
+    },
+    pythoncodebox/.default={}, % Default is No title
+    %%% Starred version has no frame %%%
+    pythoncodebox*/.style={
+        enhanced jigsaw,breakable,
+        colback=gray!10,coltitle=gray!20!black,colbacktitle=tcbcolback,
+        frame hidden,
+        top=2pt,bottom=2pt,left=2pt,right=2pt,
+        sharp corners,before skip=10pt,after skip=10pt,
+        attach boxed title to top text left={yshift=-1mm},
+        boxed title style={empty,
+            top=0pt,bottom=0pt,left=2pt,right=2pt,
+            interior code={\fill[fill=tcbcolback] (interior.south west)
+                --([yshift=-4pt]interior.north west)
+                to[out=90,in=180] ([xshift=4pt]interior.north west)
+                --([xshift=-8pt]interior.north east)
+                to[out=0,in=180] ([xshift=16pt]interior.south east)
+                --cycle;
+            }
+        },
+        title={#1}, % Argument of pythoncodebox specifies the title
+        fonttitle=\sffamily\bfseries
+    },
+    pythoncodebox*/.default={}, % Default is No title
+}
+
+% Custom tcolorbox for Python code (not the code itself, just the box it appears in)
+\newtcolorbox{pythonbox}[1][]{pythoncodebox=#1}
+\newtcolorbox{pythonbox*}[1][]{pythoncodebox*=#1} % Starred version has no frame
+
+% Custom minted environment for Python code, NOT using tcolorbox
+\newminted{python}{autogobble,breaklines,mathescape}
+
+% Custom tcblisting environment for Python code, using the "minted" tcb listing engine
+% Adapted from https://tex.stackexchange.com/a/402096
+\NewTCBListing{python}{ !O{} !D(){} !G{} }{
+    listing engine=minted,
+    listing only,
+    pythoncodebox={#1}, % First argument specifies the title (if any)
+    minted language=python,
+    minted options/.expanded={
+        autogobble,breaklines,mathescape,
+        #2 % Second argument, delimited by (), denotes options for the minted environment
+    },
+    #3 % Third argument, delimited by {}, denotes options for the tcolorbox
+}
+
+%%% Starred version has no frame %%%
+\NewTCBListing{python*}{ !O{} !D(){} !G{} }{
+    listing engine=minted,
+    listing only,
+    pythoncodebox*={#1}, % First argument specifies the title (if any)
+    minted language=python,
+    minted options/.expanded={
+        autogobble,breaklines,mathescape,
+        #2 % Second argument, delimited by (), denotes options for the minted environment
+    },
+    #3 % Third argument, delimited by {}, denotes options for the tcolorbox
+}
+
+% verbbox environment, for showing verbatim text next to code output (for package documentation and user learning purposes)
+\NewTCBListing{verbbox}{ !O{} }{
+    listing engine=minted,
+    minted language=latex,
+    boxrule=1pt,sidebyside,skin=bicolor,
+    colback=gray!10,colbacklower=white,valign=center,
+    top=2pt,bottom=2pt,left=2pt,right=2pt,
+    #1
+} % Last argument allows more tcolorbox options to be added
+
+\setlength{\parindent}{0.2in}
+\setlength{\parskip}{0pt}
+\setlength{\columnseprule}{0pt}
+
+\makeatletter
+% Redefining the title block
+\renewcommand\maketitle{
+    \null\vspace{4mm}
+    \begin{center}
+        {\Huge\sffamily\bfseries\selectfont\@title}\\
+            \vspace{4mm}
+        {\Large\sffamily\selectfont\@author}\\
+            \vspace{4mm}
+        {\large\sffamily\selectfont\@date}
+    \end{center}
+    \vspace{6mm}
+}
+% Adapted from https://tex.stackexchange.com/questions/483953/how-to-add-new-macros-like-author-without-editing-latex-ltx?noredirect=1&lq=1
+\makeatother
+
+\title{Tarea \#4 Física numérica}
+\author{Oscar Andrés Valencia Magaña}
+\date{\today}
+% Created April 6, 2023
+
+\begin{document}
+\maketitle
+\section{Introducción}
+Buscamos presentar la solución a tres problemas físicos: el movimiento de un proyectil en un medio viscoso, un sistema de osciladores acoplados y una cuerda vibrante. En este trabajo se abordarán tanto las soluciones analíticas (deducción de las ecuaciones) como las soluciones numéricas y las gráficas obtenidas mediante programas desarrollados en Python.
+\section{Lanzamiento del martillo}
+El récord mundial para hombres en lanzamiento de martillo es de $86.74~\text{m}$, establecido por Yuri Sedykh y vigente desde 1986. El martillo tiene una masa de $7.26~\text{kg}$, es esférico y posee un radio de $R = 6~\text{cm}$.
+
+La fricción sobre el martillo puede considerarse proporcional al cuadrado de la velocidad relativa al aire:
+
+\[
+F_D = \frac{1}{2} \rho A C_D v^2
+\]
+
+donde $\rho$ es la densidad del aire ($1.2~\text{kg/m}^3$) y $A = \pi R^2$ es la sección transversal del martillo.
+
+El martillo puede experimentar, en principio, un flujo laminar con coeficiente de rozamiento $C_D = 0.5$ o un flujo inestable oscilante con $C_D = 0.75$.
+
+\begin{enumerate}[label=(\alph*)]
+
+    \item Resuelva la ecuación de movimiento para el lanzamiento oblicuo del martillo. Deberá transformar las EDO correspondientes a los movimientos en $x$ y $y$ en un sistema de cuatro ecuaciones de primer orden. Considere lanzamientos desde una posición inicial $x_0 = 0$ y $y_0 = 2~\text{m}$, para un ángulo ideal $\theta = 45^\circ$, y determine la velocidad que produce la distancia del lanzamiento del récord mundial.
+    
+    Para las ecuaciones de movimiento consideremos $\vec r = (x,y)$ y $\vec{\dot{r}}=\vec v = (v_x,v_y)$. Según la mecánica Newtoniana tenemos que la ecacion de movimiento es:
+    \[m\vec{\ddot{r}} = m\vec{g} + \vec{F_D}\]
+    donde $\vec g = (0,-g)$ es la aceleración de
+    \item Calcule y grafique la dependencia temporal de la altitud del martillo y su trayectoria $y = y(x)$ en los tres regímenes:
+    \begin{enumerate}[label=\roman*.]
+        \item Sin fricción
+        \item Flujo laminar
+        \item Flujo inestable oscilante
+    \end{enumerate}
+    
+    \item En el inciso anterior, estime en qué medida la fricción influye en la distancia del lanzamiento.
+\end{enumerate}
+\section{Oscilador armónico acoplado}
+Considere el sistema de resortes que se muestra en la figura~\ref{fig:resortes}.
+
+Sea \(m\) la masa de cada bloque (ambas iguales) y supóngase que los resortes lineales tienen constantes elásticas \(k\) (resortes exteriores) y \(k_c\) (resorte central de acoplamiento), salvo que se indique lo contrario. Denote por \(x_1(t)\) y \(x_2(t)\) los desplazamientos horizontales de las masas respecto a sus posiciones de equilibrio.
+
+\begin{enumerate}[label=(\alph*)]
+    \item Escriba las ecuaciones de movimiento acopladas para los desplazamientos \(x_1(t)\) y \(x_2(t)\). Exprese las EDOs en su forma habitual y, a continuación, transforme el sistema a un conjunto equivalente de cuatro ecuaciones de primer orden adecuado para integración numérica.
+    
+    \item Calcule las frecuencias de los modos normales de vibración del sistema (modo simétrico y modo antisimétrico), y obtenga las correspondientes relaciones entre amplitudes \(X_1\) y \(X_2\) para cada modo.
+    
+    \item Grafique las posiciones de las masas en función del tiempo para las condiciones iniciales siguientes:
+    \begin{enumerate}[label=\roman*.]
+        \item Ambas masas parten del reposo habiendo sido desplazadas la misma cantidad hacia la derecha: \(x_1(0)=x_2(0)=A,\quad \dot{x}_1(0)=\dot{x}_2(0)=0.\)
+        \item Ambas masas parten del reposo habiendo sido desplazadas la misma cantidad en sentidos opuestos: \(x_1(0)=A,\; x_2(0)=-A,\quad \dot{x}_1(0)=\dot{x}_2(0)=0.\)
+        \item Una masa parte de su posición de equilibrio y la otra de una posición desplazada hacia la derecha: \(x_1(0)=0,\; x_2(0)=A,\quad \dot{x}_1(0)=\dot{x}_2(0)=0.\)
+    \end{enumerate}
+    Para cada caso, muestre las curvas \(x_1(t)\) y \(x_2(t)\) y, cuando sea útil, represente la combinación en coordenadas normales.
+    
+    \item Suponga ahora que los resortes no son lineales y que la fuerza restauradora de cada resorte tiene la forma
+    \[
+    F = -k\bigl(x + 0.1\,x^3\bigr).
+    \]
+    Repita el procedimiento del inciso (b): determine (o estime) las frecuencias / comportamientos de oscilación y compare las respuestas del sistema lineal con las del sistema no lineal. Discuta las diferencias cualitativas y cuantitativas entre ambos casos (desplazamiento- dependiente de la frecuencia, aparición de armónicos, etc.).
+\end{enumerate}
+\begin{figure}[H]
+    \centering
+    % Inserte aquí la figura 1 del sistema de resortes
+    \caption{Diagrama del sistema de dos masas acopladas por resortes (figura 1).}
+    \label{fig:resortes}
+\end{figure}
+\section{Vibración de una cuerda}
+\section*{Oscilaciones de una cuerda}
+
+Considere una cuerda de longitud \(L\) y densidad lineal \(\rho(x)\) (masa por unidad de longitud), sujeta en ambos extremos y bajo una tensión \(T(x)\). Suponga que el desplazamiento transversal de la cuerda respecto a su posición de equilibrio, \(y(x,t)\), es pequeño y que la pendiente \(\partial y/\partial x\) también es pequeña.
+
+\begin{enumerate}[label=(\alph*)]
+    \item Considere una sección infinitesimal de la cuerda entre \(x\) y \(x+\Delta x\). Notando que la diferencia en las componentes horizontales y verticales de las tensiones produce una fuerza restauradora, demuestre que, aplicando la segunda ley de Newton a esta sección, se obtiene la ecuación
+    \[
+    \frac{dT(x)}{dx}\,\frac{\partial y(x,t)}{\partial x} + T(x)\,\frac{\partial^2 y(x,t)}{\partial x^2}
+    \;=\; \rho(x)\,\frac{\partial^2 y(x,t)}{\partial t^2}.
+    \]
+    
+    \item ¿Qué condiciones sobre \(T(x)\) y \(\rho(x)\) son necesarias para recuperar la ecuación de onda estándar
+    \[
+    \frac{\partial^2 y(x,t)}{\partial x^2}
+    \;=\;
+    \frac{1}{c^2}\,\frac{\partial^2 y(x,t)}{\partial t^2},
+    \qquad c=\sqrt{\frac{T}{\rho}}\, ?
+    \]
+    Explique claramente las hipótesis de homogeneidad y constancia que se requieren.
+    
+    \item ¿Qué condiciones deben imponerse (condiciones iniciales y de frontera) para que la EDP de segundo orden tenga una única solución?
+    
+    \item Utilice una malla en tiempo y espacio con pasos \(\Delta t\) y \(\Delta x\). Denote
+    \[
+    y(x_i,t_j)=y_{i,j},\qquad x_i=i\,\Delta x,\quad t_j=j\,\Delta t.
+    \]
+    Escriba la aproximación finita correspondiente para obtener una solución numérica \(y_{i,j}\).
+    
+    \item Exprese las segundas derivadas temporales y espaciales en términos de diferencias finitas centradas y demuestre que, para el caso homogéneo (constantes \(T\) y \(\rho\)), esto conduce a la ecuación en diferencias
+    \[
+    y_{i,j+1} - 2y_{i,j} + y_{i,j-1}
+    \;=\;
+    \frac{c^2(\Delta t)^2}{(\Delta x)^2}\,
+    \bigl(y_{i+1,j} - 2y_{i,j} + y_{i-1,j}\bigr),
+    \]
+    donde \(c=\sqrt{T/\rho}\).
+    
+    \item De la ecuación anterior, despeche \(y_{i,j+1}\) y escriba el algoritmo de obtención del paso temporal siguiente en la forma
+    \[
+    y_{i,j+1} \;=\; 2y_{i,j} - y_{i,j-1}
+    \;+\; \lambda^2\bigl(y_{i+1,j} - 2y_{i,j} + y_{i-1,j}\bigr),
+    \]
+    donde \(\lambda = c\,\dfrac{\Delta t}{\Delta x}\) es el número de Courant reducido (velocidad de la malla \(c_0=\Delta x/\Delta t\) implica \(\lambda = c/c_0\)).
+    
+    \item ¿Cómo se implementan las condiciones iniciales y de frontera en el esquema numérico? Especifique la forma de:
+    \begin{itemize}
+        \item condiciones de frontera fijas (extremos sujetos: \(y_{0,j}=y_{N,j}=0\)),
+        \item condiciones de frontera libres o de radiación (si procede),
+        \item condiciones iniciales \(y_{i,0}\) y \(\dot y_{i,0}\) (desplazamiento y velocidad inicial).
+    \end{itemize}
+    Indique además cómo calcular \(y_{i,1}\) (el primer paso en tiempo) a partir de \(y_{i,0}\) y \(\dot y_{i,0}\).
+    
+    \item La condición de Courant para la estabilidad del esquema explícito es
+    \[
+    \lambda = \frac{c\,\Delta t}{\Delta x} \leq 1.
+    \]
+    Explique qué significa esto en términos de los pasos \(\Delta t\) y \(\Delta x\) (interpretación física y numérica).
+    
+    \item Escriba un programa (por ejemplo en Python) que implemente el esquema explicito anterior y produzca una animación del movimiento de la cuerda \(y(x,t)\). Indique las decisiones prácticas importantes (elección de \(\Delta x\), \(\Delta t\), duración de la simulación, condiciones de frontera, normalización de ejes para la animación).
+    
+    \item Varíe los pasos \(\Delta t\) y \(\Delta x\) en su programa de modo que en algunos casos se cumpla la condición de Courant y en otros no. Describa y explique qué ocurre en cada caso (estabilidad numérica, propagación correcta de ondas cuando \(\lambda\leq1\); crecimiento no físico e inestabilidad cuando \(\lambda>1\)).
+\end{enumerate}
+\end{document}

@@ -1,0 +1,224 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage{amsmath,amssymb,amsthm,physics}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{caption}
+\usepackage{float}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{siunitx}
+\usepackage{geometry}
+\geometry{left=2.5cm,right=2.5cm,top=2.5cm,bottom=2.5cm}
+
+\hypersetup{colorlinks=true,linkcolor=blue,urlcolor=blue}
+
+% listings para Python (estilo)
+\lstdefinestyle{py}{
+  language=Python,
+  basicstyle=\small\ttfamily,
+  keywordstyle=\color{blue}\bfseries,
+  commentstyle=\color{gray}\itshape,
+  stringstyle=\color{purple},
+  showstringspaces=false,
+  breaklines=true,
+  frame=single,
+  numbers=left,
+  numberstyle=\tiny,
+  tabsize=4
+}
+
+\title{\textbf{Tarea 3 -- Física Numérica}\\
+\vspace{6pt}
+\large Ecuación de calor 1D y Ecuación de Poisson 2D -- Resolución analítica y numérica}
+\author{Oscar Andrés Valencia Magaña\\[2pt]
+\small 8FM2 - HECTOR JAVIER URIARTE RIVERA}
+\date{7 de Octubre de 2025}
+
+\begin{document}
+\maketitle
+\begin{center}
+\textit{Escuela Superior de Física y Matemáticas, IPN -- Unidad Profesional Zacatenco}
+\end{center}
+\vspace{12pt}
+
+\begin{abstract}
+En este documento se presenta la resolución detallada, tanto analítica como numérica, de dos problemas clásicos de ecuaciones en derivadas parciales:
+la ecuación del calor unidimensional con condiciones de Dirichlet homogéneas y la ecuación de Poisson en dos dimensiones con condiciones periódicas. 
+Se incluyen derivaciones paso a paso, criterios de estabilidad para los esquemas numéricos, algoritmos implementables en código (Python) y recomendaciones para graficar y analizar resultados.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+\section{Introducción}
+Este trabajo aborda dos problemas fundamentales en física matemática y computacional: la difusión térmica en una barra y la solución numérica de Poisson en un dominio bidimensional. El objetivo es:
+\begin{itemize}
+  \item Mostrar la resolución analítica posible.
+  \item Diseñar e implementar esquemas numéricos (con detalle paso a paso).
+  \item Comparar resultados numéricos con soluciones analíticas cuando existan.
+  \item Documentar y entregar el código como apéndice para reproducibilidad.
+\end{itemize}
+
+\section{Ecuación de calor en 1D}
+\subsection{Planteamiento físico y ecuación gobernante}
+Consideramos una barra homogénea de longitud \(L\) aislada lateralmente y con extremos mantenidos a temperatura cero. Sea \(T(x,t)\) la temperatura en la posición \(x\in[0,L]\) y tiempo \(t\ge0\). La ecuación de difusión térmica (ecuación del calor) en 1D es:
+\[
+\frac{\partial T}{\partial t} = \alpha \frac{\partial^2 T}{\partial x^2},
+\]
+donde \(\alpha\) es la difusividad térmica del material (\(\alpha = k/(\rho c_p)\)). Impongamos condiciones:
+\[
+T(x,0)=T_0\quad(\text{condición inicial, constante}),\qquad T(0,t)=0,\quad T(L,t)=0\quad\forall t\ge0.
+\]
+
+\subsection{Solución analítica por separación de variables}
+Buscamos soluciones de la forma \(T(x,t)=X(x)G(t)\). Insertando en la PDE y separando:
+\[
+\frac{1}{\alpha}\frac{G'(t)}{G(t)} = \frac{X''(x)}{X(x)} = -\lambda,
+\]
+donde \(\lambda\) es constante de separación. Las condiciones de frontera \(X(0)=X(L)=0\) conducen a valores propios \(\lambda_n = (n\pi/L)^2,\ n\in\mathbb{N}\) y funciones propias \(X_n(x)=\sin(n\pi x/L)\). Las soluciones temporales son \(G_n(t)=\exp(-\alpha (n\pi/L)^2 t)\). Por superposición, imponiendo la condición inicial constante \(T_0\):
+\[
+T(x,t)=\sum_{n=1}^{\infty} b_n \sin\!\Big(\frac{n\pi x}{L}\Big) e^{-\alpha (n\pi/L)^2 t},
+\]
+con coeficientes
+\[
+b_n = \frac{2}{L}\int_0^L T_0 \sin\!\Big(\frac{n\pi x}{L}\Big)dx
+= \frac{4T_0}{n\pi}\quad\text{para }n\text{ impar},\quad b_n=0\ \text{si }n\text{ par}.
+\]
+Así la solución se expresa (sumando sobre \(n=2k+1\)):
+\[
+\boxed{T(x,t)=\sum_{k=0}^{\infty}\frac{4T_0}{(2k+1)\pi}\sin\!\Big(\frac{(2k+1)\pi x}{L}\Big)e^{-\alpha\big(\frac{(2k+1)\pi}{L}\big)^2 t}.}
+\]
+
+\subsection{Discretización y esquema numérico FTCS (explícito)}
+Para resolver numéricamente usamos diferencias finitas en una malla uniforme. Sea \(x_i=i\Delta x\) con \(i=0,\ldots,N\) y \(t^n=n\Delta t\). Aproximamos:
+\[
+\frac{\partial T}{\partial t}\Big|_{(x_i,t^n)} \approx \frac{T_i^{n+1}-T_i^n}{\Delta t},\qquad
+\frac{\partial^2 T}{\partial x^2}\Big|_{(x_i,t^n)} \approx \frac{T_{i+1}^n - 2T_i^n + T_{i-1}^n}{(\Delta x)^2}.
+\]
+Sustituyendo:
+\[
+\frac{T_i^{n+1}-T_i^n}{\Delta t} = \alpha \frac{T_{i+1}^n - 2T_i^n + T_{i-1}^n}{(\Delta x)^2}.
+\]
+Definiendo \(r=\dfrac{\alpha\Delta t}{(\Delta x)^2}\), se obtiene el esquema explícito:
+\[
+\boxed{T_i^{n+1} = T_i^n + r\big(T_{i+1}^n - 2T_i^n + T_{i-1}^n\big).}
+\]
+
+\subsubsection{Condición de estabilidad (análisis de von Neumann)}
+Aplicando el análisis de Fourier (von Neumann) al esquema se obtiene la condición de estabilidad:
+\[
+r \le \frac{1}{2}\quad\Longrightarrow\quad \Delta t \le \frac{(\Delta x)^2}{2\alpha}.
+\]
+Si \(r>1/2\) la solución numérica se vuelve inestable (creciente / oscilatoria).
+
+\subsection{Algoritmo paso a paso (implementación)}
+\begin{enumerate}
+  \item Fijar \(L, T_0, \alpha, N\). Calcular \(\Delta x=L/N\).
+  \item Elegir \(\Delta t\) tal que \(r\le 1/2\).
+  \item Inicializar \(T_i^0=T_0\) para \(i=1,\dots,N-1;\ T_0^n=T_N^n=0\).
+  \item Para cada paso de tiempo \(n\): actualizar \(T_i^{n+1}\) mediante la fórmula FTCS para \(i=1,\dots,N-1\).
+  \item Calcular error en cada tiempo con respecto a la solución analítica truncada:
+  \[
+  E_2(t^n)=\sqrt{\frac{1}{N-1}\sum_{i=1}^{N-1}\big(T_i^n - T_{\text{an}}(x_i,t^n)\big)^2 }.
+  \]
+\end{enumerate}
+
+\subsection{Experimento numérico y observaciones}
+\begin{itemize}
+  \item \emph{Convergencia:} al refinar \(\Delta x\) y respetar la condición de estabilidad, la solución numérica converge a la solución analítica.
+  \item \emph{Violación de estabilidad:} si se elige \(\Delta t\) demasiado grande ( \(r>1/2\) ) se observan oscilaciones crecientes y la solución diverge.
+  \item \emph{Equilibrio:} con condiciones de frontera a 0, el equilibrio es \(T(x,t\to\infty)=0\).
+\end{itemize}
+
+\subsection{Efecto del material (difusividad térmica)}
+Valores típicos (referencia práctica):
+\begin{itemize}
+  \item Aluminio: \(\alpha_{\mathrm{Al}}\sim 9\times 10^{-5}\ \mathrm{m}^2/\mathrm{s}\).
+  \item Madera (mala conductora): \(\alpha_{\mathrm{madera}}\sim 10^{-6}\ \mathrm{m}^2/\mathrm{s}\) (varía).
+\end{itemize}
+Un menor \(\alpha\) reduce la velocidad de difusión: la barra se enfría mucho más lento. Además la condición de estabilidad limita aún más \(\Delta t\) para una malla dada cuando \(\alpha\) es grande.
+
+\subsection{Recomendaciones numéricas}
+\begin{itemize}
+  \item Para obtener mayor estabilidad y precisión temporal sin reducir excesivamente \(\Delta t\), usar esquemas implícitos como \emph{BTCS} o \emph{Crank--Nicolson}.
+  \item Para comparar con la solución analítica, truncar la serie en un número \(M\) de términos suficiente (por ejemplo \(M=200\)–\(500\)) dependiendo del tiempo considerado.
+  \item Visualizar: superficie \(T(x,t)\) 3D, isotermas (contornos) y cortes en tiempos fijos.
+\end{itemize}
+
+\section{Ecuación de Poisson en 2D con condiciones periódicas}
+\subsection{Planteamiento}
+Resolvemos
+\[
+\frac{\partial^2 \phi}{\partial x^2} + \frac{\partial^2 \phi}{\partial y^2} = f(x,y),
+\]
+en el dominio \([0,2\pi]\times[0,2\pi]\) con condiciones periódicas en \(x\) y \(y\). Tomamos:
+\[
+f(x,y)=\cos(3x+4y)-\cos(5x-2y).
+\]
+
+\subsection{Discretización y esquema de diferencias finitas}
+Tomando una malla uniforme \(N\times N\) con \(\Delta x = \Delta y = 2\pi/N\), la aproximación por diferencias centrales da:
+\[
+\frac{\phi_{i+1,j}-2\phi_{i,j}+\phi_{i-1,j}}{\Delta x^2} + \frac{\phi_{i,j+1}-2\phi_{i,j}+\phi_{i,j-1}}{\Delta y^2} = f_{i,j}.
+\]
+Con \(\Delta x=\Delta y\) y reordenando:
+\[
+\boxed{\phi_{i,j} = \frac{1}{4}\big(\phi_{i+1,j}+\phi_{i-1,j}+\phi_{i,j+1}+\phi_{i,j-1} - (\Delta x)^2 f_{i,j}\big).}
+\]
+Debido a las condiciones periódicas, los índices se consideran módulo \(N\).
+
+\subsection{Método iterativo: Gauss--Seidel (y SOR opcional)}
+\begin{itemize}
+  \item \textbf{Gauss--Seidel:} actualiza cada \(\phi_{i,j}\) usando los valores más recientes (in place).
+  \item \textbf{SOR:} sobre-relajación sucesiva puede acelerar la convergencia: al actualizar se aplica
+  \[
+  \phi_{i,j}^{\text{new}} = (1-\omega)\phi_{i,j}^{\text{old}} + \omega \phi_{i,j}^{\text{GS}},
+  \]
+  donde \(\phi_{i,j}^{\text{GS}}\) es el valor que daría Gauss--Seidel y \(1<\omega<2\) es el parámetro.
+\end{itemize}
+
+\subsection{Criterio de convergencia}
+Usar la norma del residuo máximo:
+\[
+\text{res} = \max_{i,j}\Big|\frac{\phi_{i+1,j}-2\phi_{i,j}+\phi_{i-1,j}}{\Delta x^2} + \frac{\phi_{i,j+1}-2\phi_{i,j}+\phi_{i,j-1}}{\Delta y^2} - f_{i,j}\Big|.
+\]
+Iterar hasta \(\text{res}<\text{tol}\), por ejemplo \(\text{tol}=10^{-8}\).
+
+\subsection{Observaciones y métodos alternativos}
+\begin{itemize}
+  \item Para condiciones periódicas, la transformada de Fourier discreta (FFT) resuelve el problema de Poisson de manera directa y eficiente ( \(O(N^2\log N)\) ) y evita iteraciones.
+  \item Gauss--Seidel es sencillo y robusto; SOR mejora la velocidad si se elige \(\omega\) adecuado.
+\end{itemize}
+
+\section{Resultados esperados y forma de presentar}
+Para ambos problemas se recomienda presentar:
+\begin{itemize}
+  \item Gráficas de superficie 3D y de contorno.
+  \item Comparación numérico vs analítico (errores \(L^2\) y \(L^\infty\)).
+  \item Experimento mostrando inestabilidad cuando se viola la condición de estabilidad (para la ecuación del calor).
+  \item Mapas de convergencia (residuo vs iteraciones) para el método de Gauss--Seidel/SOR.
+\end{itemize}
+
+\newpage
+\appendix
+\section{Apéndice A: Código Python -- Ecuación del calor (FTCS) y comparación analítica}
+% El siguiente archivo debe guardarse como \texttt{heat_1d_explicit_vs_analytical.py} en la misma carpeta del \texttt{.tex} si se desea incluir mediante \verb|\lstinputlisting|.
+
+% \lstinputlisting[style=py]{heat_1d_explicit_vs_analytical.py}
+
+\section{Apéndice B: Código Python -- Poisson 2D (Gauss--Seidel, periodic)}
+% El siguiente archivo debe guardarse como \texttt{poisson_2d_gauss_seidel_periodic.py}.
+
+% \lstinputlisting[style=py]{poisson_2d_gauss_seidel_periodic.py}
+
+\section{Apéndice C: Notas de uso y reproducibilidad}
+\begin{itemize}
+  \item Requisitos: Python 3.8+, \texttt{numpy}, \texttt{matplotlib}. Opcional: \texttt{mpl\_toolkits} para gráficos 3D.
+  \item Para compilar el \texttt{.tex} y que incluya los listados: compilar en la misma carpeta donde estén los \texttt{.py}.
+  \item Para problemas grandes aumente N con cuidado (memoria y tiempo). Para Poisson usar FFT si se requiere rapidez.
+\end{itemize}
+
+\end{document}

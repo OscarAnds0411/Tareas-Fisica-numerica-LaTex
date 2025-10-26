@@ -1,0 +1,342 @@
+\documentclass[10pt]{extarticle}
+
+\usepackage[spanish]{babel}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern,mathrsfs}
+\usepackage{xparse}
+\usepackage[inline,shortlabels]{enumitem}
+\setlist{topsep=2pt,itemsep=2pt,parsep=0pt,partopsep=0pt}
+\usepackage[dvipsnames]{xcolor}
+\usepackage[utf8]{inputenc}
+\usepackage[a4paper,top=0.5in,bottom=0.2in,left=0.5in,right=0.5in,footskip=0.3in,includefoot]{geometry}
+\usepackage[most]{tcolorbox}
+\tcbuselibrary{minted} % tcolorbox minted library, required to use the "minted" tcb listing engine (this library is not loaded by the option [most])
+\usepackage{minted} % Allows input of raw code, such as Python code
+\usepackage[colorlinks]{hyperref} % ALWAYS load this package LAST
+\usepackage{listings}
+\lstset{
+    basicstyle=\ttfamily\footnotesize,
+    keywordstyle=\color{blue},
+    commentstyle=\color{gray},
+    stringstyle=\color{green!40!black},
+    showstringspaces=false,
+    numbers=left,
+    numberstyle=\tiny,
+    frame=single,
+    breaklines=true
+}
+
+% Custom tcolorbox style for Python code (not the code or the box it appears in, just the options for the box)
+\tcbset{
+    pythoncodebox/.style={
+        enhanced jigsaw,breakable,
+        colback=gray!10,colframe=gray!20!black,
+        boxrule=1pt,top=2pt,bottom=2pt,left=2pt,right=2pt,
+        sharp corners,before skip=10pt,after skip=10pt,
+        attach boxed title to top left,
+        boxed title style={empty,
+            top=0pt,bottom=0pt,left=2pt,right=2pt,
+            interior code={\fill[fill=tcbcolframe] (frame.south west)
+                --([yshift=-4pt]frame.north west)
+                to[out=90,in=180] ([xshift=4pt]frame.north west)
+                --([xshift=-8pt]frame.north east)
+                to[out=0,in=180] ([xshift=16pt]frame.south east)
+                --cycle;
+            }
+        },
+        title={#1}, % Argument of pythoncodebox specifies the title
+        fonttitle=\sffamily\bfseries
+    },
+    pythoncodebox/.default={}, % Default is No title
+    %%% Starred version has no frame %%%
+    pythoncodebox*/.style={
+        enhanced jigsaw,breakable,
+        colback=gray!10,coltitle=gray!20!black,colbacktitle=tcbcolback,
+        frame hidden,
+        top=2pt,bottom=2pt,left=2pt,right=2pt,
+        sharp corners,before skip=10pt,after skip=10pt,
+        attach boxed title to top text left={yshift=-1mm},
+        boxed title style={empty,
+            top=0pt,bottom=0pt,left=2pt,right=2pt,
+            interior code={\fill[fill=tcbcolback] (interior.south west)
+                --([yshift=-4pt]interior.north west)
+                to[out=90,in=180] ([xshift=4pt]interior.north west)
+                --([xshift=-8pt]interior.north east)
+                to[out=0,in=180] ([xshift=16pt]interior.south east)
+                --cycle;
+            }
+        },
+        title={#1}, % Argument of pythoncodebox specifies the title
+        fonttitle=\sffamily\bfseries
+    },
+    pythoncodebox*/.default={}, % Default is No title
+}
+
+% Custom tcolorbox for Python code (not the code itself, just the box it appears in)
+\newtcolorbox{pythonbox}[1][]{pythoncodebox=#1}
+\newtcolorbox{pythonbox*}[1][]{pythoncodebox*=#1} % Starred version has no frame
+
+% Custom minted environment for Python code, NOT using tcolorbox
+\newminted{python}{autogobble,breaklines,mathescape}
+
+% Custom tcblisting environment for Python code, using the "minted" tcb listing engine
+% Adapted from https://tex.stackexchange.com/a/402096
+\NewTCBListing{python}{ !O{} !D(){} !G{} }{
+    listing engine=minted,
+    listing only,
+    pythoncodebox={#1}, % First argument specifies the title (if any)
+    minted language=python,
+    minted options/.expanded={
+        autogobble,breaklines,mathescape,
+        #2 % Second argument, delimited by (), denotes options for the minted environment
+    },
+    #3 % Third argument, delimited by {}, denotes options for the tcolorbox
+}
+
+%%% Starred version has no frame %%%
+\NewTCBListing{python*}{ !O{} !D(){} !G{} }{
+    listing engine=minted,
+    listing only,
+    pythoncodebox*={#1}, % First argument specifies the title (if any)
+    minted language=python,
+    minted options/.expanded={
+        autogobble,breaklines,mathescape,
+        #2 % Second argument, delimited by (), denotes options for the minted environment
+    },
+    #3 % Third argument, delimited by {}, denotes options for the tcolorbox
+}
+
+% verbbox environment, for showing verbatim text next to code output (for package documentation and user learning purposes)
+\NewTCBListing{verbbox}{ !O{} }{
+    listing engine=minted,
+    minted language=latex,
+    boxrule=1pt,sidebyside,skin=bicolor,
+    colback=gray!10,colbacklower=white,valign=center,
+    top=2pt,bottom=2pt,left=2pt,right=2pt,
+    #1
+} % Last argument allows more tcolorbox options to be added
+
+\setlength{\parindent}{0.2in}
+\setlength{\parskip}{0pt}
+\setlength{\columnseprule}{0pt}
+
+\makeatletter
+% Redefining the title block
+\renewcommand\maketitle{
+    \null\vspace{4mm}
+    \begin{center}
+        {\Huge\sffamily\bfseries\selectfont\@title}\\
+            \vspace{4mm}
+        {\Large\sffamily\selectfont\@author}\\
+            \vspace{4mm}
+        {\large\sffamily\selectfont\@date}
+    \end{center}
+    \vspace{6mm}
+}
+% Adapted from https://tex.stackexchange.com/questions/483953/how-to-add-new-macros-like-author-without-editing-latex-ltx?noredirect=1&lq=1
+\makeatother
+
+\title{Tarea \#1 Física numérica}
+\author{Oscar Andrés Valencia Magaña}
+\date{\today}
+% Created April 6, 2023
+
+\begin{document}
+\maketitle
+%A lo largo de lo que va del curso hemos visto que siempre trabajamos con aproximaciones, nunca con valores ''exactos''. Esto se debe a que la computadora representa números de manera limitada utilizando únicamente bits (0 y 1). Para poder trabajar con números, se emplean distintos esquemas de codificación dentro de la memoria. Cada tipo de dato (entero, decimal, carácter, etc.) tiene un número fijo de bits asignados, lo que define el rango y la precisión con los que puede ser representado.
+
+%\subsection*{Números enteros}
+
+%Los números enteros (\textbf{int}) se almacenan en binario utilizando un número fijo de bits (por ejemplo, 8, 16, 32 o 64). Cuando se incluyen números negativos, se recurre al sistema de complemento a dos, que permite representar tanto valores positivos como negativos. Así, un entero con 8 bits puede abarcar desde -128 hasta 127, mientras que un entero sin signo (\textbf{unsigned}) representa únicamente valores no negativos, es decir, de 0 a 255.
+
+%\subsection*{Números reales}
+
+%Los números reales suelen representarse siguiendo el estándar IEEE 754, el cual divide los bits en tres partes:
+
+%\begin{itemize}
+%     \item El signo (positivo o negativo).
+%     \item  El exponente, que permite mover la ''coma'' o punto decimal.
+%     \item  La mantisa o fracción, que contiene los dígitos significativos.
+% \end{itemize}
+
+% Gracias a este esquema, es posible almacenar valores extremadamente grandes o pequeños, aunque siempre con una precisión limitada.
+
+% \subsection*{Consecuencias y limitaciones de la representación}
+
+% El hecho de que los números tengan una representación finita en memoria da lugar a diferentes situaciones:
+% \begin{itemize}
+%     \item Overflow (desbordamiento): ocurre cuando el resultado de una operación excede el valor máximo que puede representarse con los bits disponibles.
+%     \item Underflow (subdesbordamiento): aparece cuando un número es tan cercano a cero que no puede representarse y se aproxima a 0.
+%     \item Precisión de la máquina: más que un error, es una consecuencia natural del uso de un número finito de bits en la mantisa de los números de punto flotante. No todos los números reales pueden representarse de manera exacta, y la precisión de máquina define la menor diferencia detectable entre 1 y el siguiente número representable. En precisión doble (64 bits), este valor es aproximadamente $2^{-53}$. Esta limitación explica la presencia de ligeros errores de redondeo al realizar operaciones con decimales.
+% \end{itemize}
+
+\section{Introducción}
+A lo largo de lo que va del curso hemos visto que siempre trabajamos con aproximaciones, nunca con valores ''exactos''. Esto se debe a que la computadora representa números de manera limitada utilizando únicamente bits (0 y 1). Para poder trabajar con números, se emplean distintos esquemas de codificación dentro de la memoria. Cada tipo de dato (entero, decimal, carácter, etc.) tiene un número fijo de bits asignados, lo que define el rango y la precisión con los que puede ser representado.
+
+\section{Representación de números}
+\subsection*{Números enteros}
+Los números enteros (\textbf{int}) se almacenan en binario utilizando un número fijo de bits (por ejemplo, 8, 16, 32 o 64). Cuando se incluyen números negativos, se recurre al sistema de complemento a dos, que permite representar tanto valores positivos como negativos. Así, un entero con 8 bits puede abarcar desde -128 hasta 127, mientras que un entero sin signo (\textbf{unsigned}) representa únicamente valores no negativos, es decir, de 0 a 255.
+
+\subsection*{Números reales}
+Los números reales suelen representarse siguiendo el estándar IEEE 754, el cual divide los bits en tres partes:
+\begin{itemize}
+    \item El signo (positivo o negativo).
+    \item El exponente, que permite mover la ''coma'' o punto decimal.
+    \item La mantisa o fracción, que contiene los dígitos significativos.
+\end{itemize}
+
+Gracias a este esquema, es posible almacenar valores extremadamente grandes o pequeños, aunque siempre con una precisión limitada.
+
+\subsection*{Consecuencias y limitaciones de la representación}
+El hecho de que los números tengan una representación finita en memoria da lugar a diferentes situaciones:
+\begin{itemize}
+    \item \textbf{Overflow (desbordamiento)}: ocurre cuando el resultado de una operación excede el valor máximo que puede representarse con los bits disponibles.
+    \item \textbf{Underflow (subdesbordamiento)}: aparece cuando un número es tan cercano a cero que no puede representarse y se aproxima a 0.
+    \item \textbf{Precisión de la máquina}: es la menor diferencia detectable entre 1 y el siguiente número representable. En doble precisión (64 bits), este valor es aproximadamente $2^{-53} \approx 2.22 \times 10^{-16}$.
+\end{itemize}
+
+\section{Determinación experimental de parámetros de coma flotante}
+Para ilustrar estas limitaciones, se implementó un programa en Python que determina:
+\begin{itemize}
+    \item El valor máximo antes del \textit{overflow}.
+    \item El valor mínimo positivo distinto de cero (\textit{underflow}).
+    \item La precisión de máquina $\varepsilon$.
+\end{itemize}
+
+\subsection*{Método numérico}
+\begin{itemize}
+    \item Para el \textbf{overflow}: se multiplica por 2 hasta que el número se convierte en infinito.
+    \item Para el \textbf{underflow}: se divide por 2 hasta que el número se aproxima a 0.
+    \item Para $\varepsilon$: se busca el menor $\epsilon$ tal que $1+\epsilon > 1$.
+\end{itemize}
+
+\section{Serie de Taylor de $\sin x$}
+La función seno puede expresarse como:
+\[
+\sin x = \sum_{n=0}^{\infty} (-1)^n \frac{x^{2n+1}}{(2n+1)!}.
+\]
+En el programa se utiliza la recurrencia:
+\[
+t_{n+1} = -t_n \cdot \frac{x^2}{(2n+2)(2n+3)},
+\]
+que evita el cálculo explícito de factoriales y mejora la eficiencia.
+
+El problema consiste en:
+\begin{enumerate}
+    \item Calcular $\sin x$ para $x < 2\pi$ y $x > 2\pi$ con error absoluto $<10^{-8}$.
+    \item Usar la identidad $\sin(x+2n\pi) = \sin(x)$ para valores grandes.
+    \item Probar con tolerancias menores que $\varepsilon$ y observar los límites de la máquina.
+\end{enumerate}
+\section{Codificación}
+\begin{python}[Tarea 1: implementaciones en python](style=one-dark){colback=gray!40!black,colframe=blue}
+import math
+import numpy as np
+
+# --- Función para calcular el Overflow ---
+# Esta función encuentra el mayor número representable antes de que ocurra un desbordamiento (overflow).
+def calcular_overflow():
+    x = 1.0  # Inicializa x en 1.0
+    while x*2 != float('inf'):  # Multiplica x por 2 hasta que el resultado sea infinito
+        x *= 2.0
+    return x  # Devuelve el último valor antes del infinito
+
+# --- Función para calcular el Underflow ---
+# Esta función encuentra el menor número positivo representable antes de que se convierta en 0.
+def calcular_underflow():
+    y = 1.0  # Inicializa y en 1.0
+    while y/2 != 0:  # Divide y por 2 hasta que el resultado sea 0
+        y /= 2
+    return y  # Devuelve el último valor antes de 0
+
+# --- Función para calcular el Epsilon de Máquina ---
+# Esta función encuentra el menor número que, al sumarse a 1.0, produce un resultado distinto de 1.0.
+def calcular_epsilon():
+    eps = 1.0  # Inicializa eps en 1.0
+    while 1.0 + eps/2 > 1.0:  # Divide eps por 2 hasta que 1.0 + eps/2 sea igual a 1.0
+        eps /= 2
+    return eps  # Devuelve el último valor de eps
+
+# --- Serie de Taylor para calcular sin(x) ---
+# Esta función calcula el seno de x utilizando la serie de Taylor.
+# - x: valor de entrada
+# - tol: tolerancia para detener la serie
+# - reduce_mod: si es True, reduce x al rango [-pi, pi]
+# - max_terms: número máximo de términos a calcular
+def sin_series(x, tol=1e-8, reduce_mod=True, max_terms=1000):
+    if reduce_mod:
+        # Reduce x al rango [-pi, pi] para mejorar la convergencia
+        x_red = ((x + math.pi) % (2*math.pi)) - math.pi
+    else:
+        x_red = x
+    
+    term = x_red  # Primer término de la serie
+    suma = term  # Inicializa la suma con el primer término
+    n = 0  # Contador de términos
+    # Tabla para almacenar los resultados de cada término
+    tabla = [(n+1, suma, abs((suma - math.sin(x))/math.sin(x))
+             if math.sin(x)!=0 else abs(suma - math.sin(x)))]
+    
+    while abs(term) >= tol and n < max_terms:  # Itera mientras el término sea mayor que la tolerancia
+        denom = (2*(n+1))*(2*(n+1)+1)  # Calcula el denominador del término
+        term = -term * x_red*x_red / denom  # Calcula el siguiente término
+        suma += term  # Suma el término a la suma total
+        n += 1  # Incrementa el contador de términos
+        # Calcula el error relativo y lo agrega a la tabla
+        error_rel = abs((suma - math.sin(x))/math.sin(x)) if math.sin(x)!=0 else abs(suma - math.sin(x))
+        tabla.append((n+1, suma, error_rel))
+    
+    return suma, tabla  # Devuelve la suma y la tabla de resultados
+
+# --- Programa principal ---
+if __name__ == "__main__":
+    # Calcula el overflow, underflow y epsilon de máquina
+    of = calcular_overflow()
+    uf = calcular_underflow()
+    eps = calcular_epsilon()
+    
+    # Imprime los resultados
+    print("Overflow estimado:", of)
+    print("Underflow estimado:", uf)
+    print("Epsilon de máquina:", eps)
+    
+    # Ejemplo: calcular sin(x) con tabla
+    x = math.pi/4  # Valor de entrada (pi/4)
+    suma, tabla = sin_series(x, tol=1e-8)  # Calcula sin(x) con la serie de Taylor
+    print(f"\nCálculo de sin({x}) con serie de Taylor:")
+    # Imprime el encabezado de la tabla
+    print("{:<5s} {:<20s} {:<20s}".format("N", "Suma", "Error relativo"))
+    for fila in tabla:  # Itera sobre cada fila de la tabla
+        # Imprime el número de término, la suma y el error relativo
+        print("{:<5d} {:<20.12e} {:<20.12e}".format(fila[0], fila[1], fila[2]))
+\end{python}
+\subsection*{Caso experimental}
+Se calculó \(\sin(x)\) para \(x=\pi/4\) (0.7853981633974483). Con tolerancia de parada \(\text{tol}=10^{-8}\) y reducción modular por \(2\pi\), la tabla parcial que obtuviste es la siguiente (N = número de términos sumados, \textit{suma} = suma parcial, \textit{error relativo} = \(|\text{suma}-\sin(x)|/|\sin(x)|\)):
+
+\medskip
+\begin{center}
+\begin{tabular}{|c|c|c|}
+\hline
+\textbf{N} & \textbf{Suma} & \textbf{Error relativo} \\
+\hline
+1 & 7.853981633974e-01 & 1.107207345396e-01 \\
+2 & 7.046526512092e-01 & 3.470663897837e-03 \\
+3 & 7.071430457794e-01 & 5.128587898965e-05 \\
+4 & 7.071064695752e-01 & 4.406850249163e-07 \\
+5 & 7.071067829369e-01 & 2.475325654525e-09 \\
+6 & 7.071067811796e-01 & 9.797847969924e-12 \\
+\hline
+\end{tabular}
+\end{center}
+\medskip
+
+\paragraph{Interpretación:} la suma parcial converge rápidamente hacia \(\sin(\pi/4)=\tfrac{\sqrt{2}}{2}\approx0.7071067811865476\). A N=6 la aproximación ya alcanza un error relativo del orden de \(10^{-11}\), muy por debajo de la tolerancia solicitada \(10^{-8}\).
+
+\section{Discusión crítica y conclusiones ajustadas}
+\begin{itemize}
+  \item \textbf{Overflow:} el valor experimental \(8.988\times10^{307}\) está dentro del \emph{factor 2} requerido respecto al valor máximo teórico \( \approx 1.798\times10^{308}\). El hecho de obtener aproximadamente la mitad del máximo se explica por el criterio usado (doblar hasta producir inf), que a menudo deja el último valor válido aproximadamente la mitad del máximo representable.
+  \item \textbf{Underflow:} el valor \(5\times10^{-324}\) coincide con la presencia de \emph{números subnormales}. Esto indica que la máquina produce subnormales antes de llegar a 0. Los subnormales permiten representar números más pequeños que el menor normalizado a costa de precisión.
+  \item \textbf{Epsilon:} \(\varepsilon = 2.220446049250313\times10^{-16}\) coincide con lo esperado para doble precisión; por tanto, pedir tolerancias mucho menores que esto no aporta precisión adicional en cálculos con \texttt{float64}.
+  \item \textbf{Serie de Taylor para \(\sin x\):} la recurrencia usada es numéricamente eficiente y evita factoriales grandes. La reducción modulo \(2\pi\) asegura convergencia rápida. Con la tolerancia \(10^{-8}\) la serie converge en 6 términos para \(x=\pi/4\), alcanzando error relativo \(\sim 10^{-11}\).
+  \item \textbf{Recomendación práctica:} usar la reducción de argumento y una tolerancia razonable (por ejemplo \(10^{-8}\) para muchas aplicaciones) — pedir tolerancias $\ll \varepsilon$ no mejora resultados con \texttt{float64}.
+\end{itemize}
+\end{document}
