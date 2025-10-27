@@ -1,0 +1,282 @@
+\begin{MintedVerbatim}[commandchars=\\\{\},codes={\catcode`\$=3\catcode`\^=7\catcode`\_=8\relax}]
+\PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{pylab}\PYG{+w}{ }\PYG{k+kn}{import} \PYG{o}{*}
+\PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{numpy}\PYG{+w}{ }\PYG{k}{as}\PYG{+w}{ }\PYG{n+nn}{np}
+\PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{scipy.integrate}\PYG{+w}{ }\PYG{k+kn}{import} \PYG{n}{odeint}
+\PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{matplotlib.animation}\PYG{+w}{ }\PYG{k+kn}{import} \PYG{n}{FuncAnimation}
+\PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{os}
+
+\PYG{c+c1}{\PYGZsh{} Parámetros físicos}
+\PYG{n}{g} \PYG{o}{=} \PYG{l+m+mf}{9.81}  \PYG{c+c1}{\PYGZsh{} Aceleración debido a la gravedad (m/s\PYGZca{}2)}
+\PYG{n}{rho} \PYG{o}{=} \PYG{l+m+mf}{1.2}  \PYG{c+c1}{\PYGZsh{} Densidad del aire (kg/m\PYGZca{}3)}
+\PYG{n}{R} \PYG{o}{=} \PYG{l+m+mf}{0.06}  \PYG{c+c1}{\PYGZsh{} Radio del martillo (m)}
+\PYG{n}{A} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{pi} \PYG{o}{*} \PYG{n}{R}\PYG{o}{**}\PYG{l+m+mi}{2}  \PYG{c+c1}{\PYGZsh{} Área de sección transversal del martillo (m\PYGZca{}2)}
+\PYG{n}{m} \PYG{o}{=} \PYG{l+m+mf}{7.26}  \PYG{c+c1}{\PYGZsh{} Masa del martillo (kg)}
+\PYG{n}{record\PYGZus{}distance} \PYG{o}{=} \PYG{l+m+mf}{86.74}  \PYG{c+c1}{\PYGZsh{} Distancia del récord mundial (m)}
+\PYG{n}{theta} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{radians}\PYG{p}{(}\PYG{l+m+mi}{45}\PYG{p}{)}  \PYG{c+c1}{\PYGZsh{} Ángulo de lanzamiento (radianes)}
+\PYG{n}{x0}\PYG{p}{,} \PYG{n}{y0} \PYG{o}{=} \PYG{l+m+mi}{0}\PYG{p}{,}  \PYG{l+m+mi}{2}  \PYG{c+c1}{\PYGZsh{} Posición inicial (m)}
+\PYG{n}{it\PYGZus{}max} \PYG{o}{=} \PYG{l+m+mi}{500}  \PYG{c+c1}{\PYGZsh{} Número máximo de iteraciones}
+\PYG{n}{dt} \PYG{o}{=} \PYG{l+m+mf}{0.01}  \PYG{c+c1}{\PYGZsh{} Paso de tiempo (s)}
+\PYG{n}{N}\PYG{o}{=} \PYG{l+m+mi}{500}  \PYG{c+c1}{\PYGZsh{} Número de pasos de tiempo}
+\PYG{n}{tol}\PYG{o}{=}\PYG{l+m+mf}{1e\PYGZhy{}3}  \PYG{c+c1}{\PYGZsh{} Tolerancia para la convergencia}
+\PYG{n}{drag\PYGZus{}coeffs} \PYG{o}{=} \PYG{p}{[}\PYG{l+m+mf}{0.0}\PYG{p}{,} \PYG{l+m+mf}{0.5}\PYG{p}{,} \PYG{l+m+mf}{0.75}\PYG{p}{]}  \PYG{c+c1}{\PYGZsh{} Coeficientes de arrastre para los tres regímenes}
+
+\PYG{c+c1}{\PYGZsh{} Crear carpeta para resultados}
+\PYG{n}{output\PYGZus{}dir} \PYG{o}{=} \PYG{l+s+s1}{\PYGZsq{}resultados\PYGZus{}martillo\PYGZsq{}} \PYG{c+c1}{\PYGZsh{} Carpeta para guardar resultados}
+\PYG{k}{if} \PYG{o+ow}{not} \PYG{n}{os}\PYG{o}{.}\PYG{n}{path}\PYG{o}{.}\PYG{n}{exists}\PYG{p}{(}\PYG{n}{output\PYGZus{}dir}\PYG{p}{):} \PYG{c+c1}{\PYGZsh{} Crear carpeta si no existe}
+    \PYG{n}{os}\PYG{o}{.}\PYG{n}{makedirs}\PYG{p}{(}\PYG{n}{output\PYGZus{}dir}\PYG{p}{)} \PYG{c+c1}{\PYGZsh{} Crear carpeta si no existe}
+
+
+\PYG{c+c1}{\PYGZsh{}definición de las ecuaciones de movimiento (EDOs)}
+\PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{equations\PYGZus{}of\PYGZus{}motion}\PYG{p}{(}\PYG{n}{state}\PYG{p}{,} \PYG{n}{t}\PYG{p}{,} \PYG{n}{k}\PYG{p}{):}
+\PYG{+w}{    }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}Devuelve las derivadas de las variables de estado.\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+    \PYG{n}{f0}\PYG{o}{=} \PYG{n}{state}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]}
+    \PYG{n}{f1}\PYG{o}{=} \PYG{o}{\PYGZhy{}}\PYG{n}{k}\PYG{o}{/}\PYG{n}{m}\PYG{o}{*}\PYG{n}{state}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]}\PYG{o}{*}\PYG{n}{np}\PYG{o}{.}\PYG{n}{sqrt}\PYG{p}{(}\PYG{n}{state}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]}\PYG{o}{**}\PYG{l+m+mi}{2} \PYG{o}{+} \PYG{n}{state}\PYG{p}{[}\PYG{l+m+mi}{3}\PYG{p}{]}\PYG{o}{**}\PYG{l+m+mi}{2}\PYG{p}{)}
+    \PYG{n}{f2}\PYG{o}{=} \PYG{n}{state}\PYG{p}{[}\PYG{l+m+mi}{3}\PYG{p}{]}
+    \PYG{n}{f3} \PYG{o}{=} \PYG{o}{\PYGZhy{}}\PYG{n}{g} \PYG{o}{\PYGZhy{}} \PYG{n}{k}\PYG{o}{/}\PYG{n}{m}\PYG{o}{*}\PYG{n}{state}\PYG{p}{[}\PYG{l+m+mi}{3}\PYG{p}{]}\PYG{o}{*}\PYG{n}{np}\PYG{o}{.}\PYG{n}{sqrt}\PYG{p}{(}\PYG{n}{state}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]}\PYG{o}{**}\PYG{l+m+mi}{2} \PYG{o}{+} \PYG{n}{state}\PYG{p}{[}\PYG{l+m+mi}{3}\PYG{p}{]}\PYG{o}{**}\PYG{l+m+mi}{2}\PYG{p}{)}
+    \PYG{k}{return} \PYG{n}{array}\PYG{p}{([}\PYG{n}{f0}\PYG{p}{,} \PYG{n}{f1}\PYG{p}{,} \PYG{n}{f2}\PYG{p}{,} \PYG{n}{f3}\PYG{p}{])}
+
+\PYG{c+c1}{\PYGZsh{}buscamos la distancia alcanzada para una velocidad inicial dada}
+\PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{distance\PYGZus{}reached}\PYG{p}{(}\PYG{n}{initial}\PYG{p}{,} \PYG{n}{v0}\PYG{p}{,} \PYG{n}{k}\PYG{p}{):}
+\PYG{+w}{    }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}Calcula la distancia alcanzada para una velocidad inicial dada y coeficiente de arrastre k.\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+    \PYG{c+c1}{\PYGZsh{}como theta = 45 grados, las componentes x e y de la velocidad inicial son iguales}
+    \PYG{n}{v}\PYG{o}{=} \PYG{n}{v0} \PYG{o}{*} \PYG{n}{np}\PYG{o}{.}\PYG{n}{sin}\PYG{p}{(}\PYG{n}{pi}\PYG{o}{/}\PYG{l+m+mi}{4}\PYG{p}{)}
+    \PYG{n}{finaltime} \PYG{o}{=} \PYG{l+m+mf}{10.0} \PYG{c+c1}{\PYGZsh{} Tiempo final para la simulación}
+    \PYG{n}{r0}\PYG{o}{=} \PYG{n}{array}\PYG{p}{([}\PYG{n}{initial}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{],}\PYG{n}{v} \PYG{p}{,} \PYG{n}{initial}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{],} \PYG{n}{v}\PYG{p}{])}  \PYG{c+c1}{\PYGZsh{} Estado inicial: [x0, vx0, y0, vy0]}
+    \PYG{n}{r}\PYG{o}{=}\PYG{n}{r0} \PYG{c+c1}{\PYGZsh{} variable para almacenar el estado actual}
+    \PYG{n}{t} \PYG{o}{=} \PYG{n}{linspace}\PYG{p}{(}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{n}{it\PYGZus{}max} \PYG{o}{*} \PYG{n}{dt}\PYG{p}{,} \PYG{n}{N}\PYG{p}{)}  \PYG{c+c1}{\PYGZsh{} Vector de tiempo}
+    \PYG{n}{groundtime}\PYG{o}{=} \PYG{l+m+mf}{0.0}
+
+    \PYG{c+c1}{\PYGZsh{}inicia lo dificil, jugar a adivinar con algo numerico}
+    \PYG{n}{s}\PYG{o}{=}\PYG{l+m+mi}{0}
+    \PYG{k}{while} \PYG{n}{s} \PYG{o}{\PYGZlt{}} \PYG{n}{it\PYGZus{}max}\PYG{p}{:}
+        \PYG{c+c1}{\PYGZsh{} Integración numérica de las EDOs}
+        \PYG{n}{sol} \PYG{o}{=} \PYG{n}{odeint}\PYG{p}{(}\PYG{n}{equations\PYGZus{}of\PYGZus{}motion}\PYG{p}{,} \PYG{n}{r}\PYG{p}{,} \PYG{n}{t}\PYG{p}{,} \PYG{n}{args}\PYG{o}{=}\PYG{p}{(}\PYG{n}{k}\PYG{p}{,))}
+        \PYG{n}{n}\PYG{o}{=}\PYG{n+nb}{len}\PYG{p}{(}\PYG{n}{sol}\PYG{p}{)}\PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}
+        \PYG{c+c1}{\PYGZsh{} Verificar si el martillo no ha tocado el suelo}
+        \PYG{k}{if} \PYG{n}{sol}\PYG{p}{[}\PYG{n}{n}\PYG{p}{,} \PYG{l+m+mi}{2}\PYG{p}{]} \PYG{o}{\PYGZgt{}} \PYG{l+m+mi}{0}\PYG{p}{:}
+            \PYG{n}{finaltime} \PYG{o}{+=} \PYG{l+m+mf}{1.0}
+            \PYG{n}{t}\PYG{o}{=} \PYG{n}{linspace}\PYG{p}{(}\PYG{l+m+mf}{0.}\PYG{p}{,} \PYG{n}{finaltime}\PYG{p}{,} \PYG{n}{N}\PYG{p}{)}
+        \PYG{k}{else}\PYG{p}{:}
+           \PYG{k}{for} \PYG{n}{j} \PYG{o+ow}{in} \PYG{n+nb}{range}\PYG{p}{(}\PYG{n}{n}\PYG{p}{):}
+               \PYG{c+c1}{\PYGZsh{} verificamos si la fisica nos falla y fuimos capaces de atravesar el suelo}
+               \PYG{k}{if} \PYG{n}{sol}\PYG{p}{[}\PYG{n}{j}\PYG{p}{,} \PYG{l+m+mi}{2}\PYG{p}{]} \PYG{o}{\PYGZlt{}=} \PYG{l+m+mi}{0}\PYG{p}{:}
+                   \PYG{n}{groundtime} \PYG{o}{+=} \PYG{n}{t}\PYG{p}{[}\PYG{n}{j}\PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{]}\PYG{o}{\PYGZhy{}}\PYG{n}{t}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]}
+                   \PYG{c+c1}{\PYGZsh{}checamos la tolerancia}
+                   \PYG{k}{if} \PYG{n+nb}{abs}\PYG{p}{(}\PYG{n}{sol}\PYG{p}{[}\PYG{n}{j}\PYG{p}{,}\PYG{l+m+mi}{2}\PYG{p}{])}\PYG{o}{\PYGZlt{}=} \PYG{n}{tol}\PYG{o}{/}\PYG{l+m+mf}{2.}\PYG{p}{:}
+                       \PYG{c+c1}{\PYGZsh{} buscamos que en caso de ser preciso, reacemos todo pero usando el tiempo para que toque el suelo.}
+                       \PYG{n}{t} \PYG{o}{=} \PYG{n}{linspace}\PYG{p}{(}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{n}{groundtime}\PYG{o}{+}\PYG{n}{t}\PYG{p}{[}\PYG{n}{j}\PYG{p}{]}\PYG{o}{\PYGZhy{}}\PYG{n}{t}\PYG{p}{[}\PYG{n}{j}\PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{],} \PYG{n}{N}\PYG{o}{*}\PYG{l+m+mi}{50}\PYG{o}{*}\PYG{n}{s}\PYG{p}{)}
+                       \PYG{n}{sol} \PYG{o}{=} \PYG{n}{odeint}\PYG{p}{(}\PYG{n}{equations\PYGZus{}of\PYGZus{}motion}\PYG{p}{,} \PYG{n}{r0}\PYG{p}{,} \PYG{n}{t}\PYG{p}{,} \PYG{n}{args}\PYG{o}{=}\PYG{p}{(}\PYG{n}{k}\PYG{p}{,))}
+                       \PYG{n}{n}\PYG{o}{=}\PYG{n+nb}{len}\PYG{p}{(}\PYG{n}{sol}\PYG{p}{)}\PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}
+                       \PYG{k}{return} \PYG{p}{(}\PYG{n}{sol}\PYG{p}{[}\PYG{n}{n}\PYG{p}{,}\PYG{l+m+mi}{0}\PYG{p}{]}\PYG{o}{+}\PYG{n}{sol}\PYG{p}{[}\PYG{n}{n}\PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{,}\PYG{l+m+mi}{0}\PYG{p}{])}\PYG{o}{/}\PYG{l+m+mf}{2.}\PYG{p}{,} \PYG{n}{groundtime}
+                   \PYG{k}{else}\PYG{p}{:} \PYG{c+c1}{\PYGZsh{}en caso de no ser preciso, resolvemos la ED con los valores inciales, que seran las condiciones que el martillo llevaba antes de tocar el piso.}
+                        \PYG{n}{r} \PYG{o}{=} \PYG{n}{array}\PYG{p}{([}\PYG{n}{sol}\PYG{p}{[}\PYG{n}{j}\PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{][}\PYG{l+m+mi}{0}\PYG{p}{],} \PYG{n}{sol}\PYG{p}{[}\PYG{n}{j}\PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{][}\PYG{l+m+mi}{1}\PYG{p}{],}
+                                    \PYG{n}{sol}\PYG{p}{[}\PYG{n}{j}\PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{][}\PYG{l+m+mi}{2}\PYG{p}{],} \PYG{n}{sol}\PYG{p}{[}\PYG{n}{j}\PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{][}\PYG{l+m+mi}{3}\PYG{p}{]])}
+                        \PYG{n}{t}\PYG{o}{=}\PYG{n}{linspace}\PYG{p}{(}\PYG{n}{t}\PYG{p}{[}\PYG{n}{j}\PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{],} \PYG{n}{t}\PYG{p}{[}\PYG{n}{j}\PYG{p}{],} \PYG{l+m+mi}{50}\PYG{p}{)}
+                        \PYG{k}{break}
+        \PYG{n}{s} \PYG{o}{+=} \PYG{l+m+mi}{1}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Distancia recorrida antes de llegar al suelo no encontrada}\PYG{l+s+se}{\PYGZbs{}}
+\PYG{l+s+s2}{          dentro de las iteraciones permitidas. Regresamos 0.\PYGZdq{}}\PYG{p}{)}
+    \PYG{k}{return} \PYG{l+m+mf}{0.}\PYG{p}{,}\PYG{l+m+mf}{0.}
+
+
+\PYG{c+c1}{\PYGZsh{} nos interesa hallar la velocidad inicial que produce la distancia del récord mundial}
+\PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{find\PYGZus{}initial\PYGZus{}velocity}\PYG{p}{(}\PYG{n}{distance}\PYG{p}{,} \PYG{n}{initial}\PYG{p}{,} \PYG{n}{v0}\PYG{p}{,} \PYG{n}{k}\PYG{p}{):}
+\PYG{+w}{    }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}Encuentra la velocidad inicial que produce la distancia del récord mundial.\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+    \PYG{n}{f}\PYG{o}{=} \PYG{k}{lambda} \PYG{n}{v}\PYG{p}{:} \PYG{n}{distance\PYGZus{}reached}\PYG{p}{(}\PYG{n}{initial}\PYG{p}{,} \PYG{n}{v}\PYG{p}{,} \PYG{n}{k}\PYG{p}{)[}\PYG{l+m+mi}{0}\PYG{p}{]}\PYG{o}{\PYGZhy{}} \PYG{n}{distance}
+    \PYG{n}{dv}\PYG{o}{=} \PYG{l+m+mf}{1.0e\PYGZhy{}3}
+
+    \PYG{n}{i}\PYG{o}{=}\PYG{l+m+mi}{0}
+
+    \PYG{c+c1}{\PYGZsh{}vamos a hacer Newton\PYGZhy{}Raphson para encontrar la velocidad inicial}
+    \PYG{k}{while} \PYG{n}{i} \PYG{o}{\PYGZlt{}} \PYG{n}{it\PYGZus{}max}\PYG{p}{:}
+        \PYG{n}{fv} \PYG{o}{=} \PYG{n}{f}\PYG{p}{(}\PYG{n}{v0}\PYG{p}{)}
+        \PYG{k}{if} \PYG{n+nb}{abs}\PYG{p}{(}\PYG{n}{fv}\PYG{p}{)} \PYG{o}{\PYGZlt{}=} \PYG{n}{tol}\PYG{p}{:}
+            \PYG{k}{return} \PYG{n}{v0}
+        \PYG{c+c1}{\PYGZsh{} Derivada numérica}
+        \PYG{n}{df} \PYG{o}{=} \PYG{p}{(}\PYG{n}{f}\PYG{p}{(}\PYG{n}{v0} \PYG{o}{+} \PYG{n}{dv}\PYG{o}{/}\PYG{l+m+mf}{2.}\PYG{p}{)} \PYG{o}{\PYGZhy{}} \PYG{n}{f}\PYG{p}{(}\PYG{n}{v0} \PYG{o}{\PYGZhy{}} \PYG{n}{dv}\PYG{o}{/}\PYG{l+m+mf}{2.}\PYG{p}{))} \PYG{o}{/} \PYG{n}{dv}
+        \PYG{n}{dv}\PYG{o}{=} \PYG{o}{\PYGZhy{}}\PYG{n}{fv}\PYG{o}{/}\PYG{n}{df}
+        \PYG{n}{v0} \PYG{o}{+=} \PYG{n}{dv}
+
+        \PYG{n}{i} \PYG{o}{+=} \PYG{l+m+mi}{1}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Velocidad inicial no encontrada dentro de las iteraciones permitidas.}\PYG{l+s+se}{\PYGZbs{}}
+\PYG{l+s+s2}{          Regresamos 0.\PYGZdq{}}\PYG{p}{)}
+    \PYG{k}{return} \PYG{l+m+mf}{0.}
+\PYG{c+c1}{\PYGZsh{}Tambien nos interesa la trayectoria :}
+\PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{get\PYGZus{}full\PYGZus{}trajectory}\PYG{p}{(}\PYG{n}{initial}\PYG{p}{,} \PYG{n}{v0}\PYG{p}{,} \PYG{n}{k}\PYG{p}{,} \PYG{n}{tground}\PYG{p}{):}
+\PYG{+w}{    }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}Obtiene la trayectoria completa para graficar.\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+    \PYG{n}{v} \PYG{o}{=} \PYG{n}{v0} \PYG{o}{*} \PYG{n}{np}\PYG{o}{.}\PYG{n}{sin}\PYG{p}{(}\PYG{n}{np}\PYG{o}{.}\PYG{n}{pi}\PYG{o}{/}\PYG{l+m+mi}{4}\PYG{p}{)}
+    \PYG{n}{r0} \PYG{o}{=} \PYG{n}{array}\PYG{p}{([}\PYG{n}{initial}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{],} \PYG{n}{v}\PYG{p}{,} \PYG{n}{initial}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{],} \PYG{n}{v}\PYG{p}{])}
+
+    \PYG{k}{if} \PYG{n}{tground} \PYG{o}{==} \PYG{l+m+mf}{0.}\PYG{p}{:}
+        \PYG{n}{tground} \PYG{o}{=} \PYG{l+m+mf}{5.0}
+
+    \PYG{n}{t} \PYG{o}{=} \PYG{n}{linspace}\PYG{p}{(}\PYG{l+m+mf}{0.}\PYG{p}{,} \PYG{n}{tground}\PYG{p}{,} \PYG{l+m+mi}{500}\PYG{p}{)}
+    \PYG{n}{sol} \PYG{o}{=} \PYG{n}{odeint}\PYG{p}{(}\PYG{n}{equations\PYGZus{}of\PYGZus{}motion}\PYG{p}{,} \PYG{n}{r0}\PYG{p}{,} \PYG{n}{t}\PYG{p}{,} \PYG{n}{args}\PYG{o}{=}\PYG{p}{(}\PYG{n}{k}\PYG{p}{,))}
+
+    \PYG{k}{return} \PYG{n}{sol}\PYG{p}{,} \PYG{n}{t}
+\PYG{c+c1}{\PYGZsh{}imprimmos las condiciones iniciales}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{Condiciones iniciales:\PYGZdq{}}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}  x0 = }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{x0}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ m, y0 = }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{y0}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ m, theta = 45\PYGZdq{}}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{Encontrando velocidad inicial para alcanzar récord mundial...\PYGZdq{}}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}=\PYGZdq{}}\PYG{o}{*}\PYG{l+m+mi}{70}\PYG{p}{)}
+
+\PYG{n}{v\PYGZus{}aux} \PYG{o}{=} \PYG{p}{[]} \PYG{c+c1}{\PYGZsh{} Lista para almacenar velocidades iniciales}
+\PYG{k}{for} \PYG{n}{i}\PYG{p}{,} \PYG{n}{cd} \PYG{o+ow}{in} \PYG{n+nb}{enumerate}\PYG{p}{(}\PYG{n}{drag\PYGZus{}coeffs}\PYG{p}{):}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}  * Régimen }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{i}\PYG{o}{+}\PYG{l+m+mi}{1}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ (C\PYGZus{}D = }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{cd}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{):\PYGZdq{}}\PYG{p}{)}
+    \PYG{n}{k} \PYG{o}{=} \PYG{n}{rho} \PYG{o}{*} \PYG{n}{A} \PYG{o}{*} \PYG{n}{cd} \PYG{o}{/} \PYG{l+m+mf}{2.0}
+    \PYG{n}{v0\PYGZus{}record} \PYG{o}{=} \PYG{n}{find\PYGZus{}initial\PYGZus{}velocity}\PYG{p}{(}\PYG{n}{record\PYGZus{}distance}\PYG{p}{,} \PYG{n}{array}\PYG{p}{([}\PYG{n}{x0}\PYG{p}{,} \PYG{n}{y0}\PYG{p}{]),} \PYG{l+m+mf}{28.0}\PYG{p}{,} \PYG{n}{k}\PYG{p}{)}
+    \PYG{n}{v\PYGZus{}aux}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{n}{v0\PYGZus{}record}\PYG{p}{)} \PYG{c+c1}{\PYGZsh{} Agregar velocidad inicial encontrada a la lista \PYGZhy{}\PYGZhy{}\PYGZhy{} nos serviran más adelante}
+    \PYG{k}{if} \PYG{n}{v0\PYGZus{}record} \PYG{o}{==} \PYG{l+m+mf}{0.}\PYG{p}{:}
+        \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}ERROR: No se pudo calcular la velocidad inicial.\PYGZdq{}}\PYG{p}{)}
+        \PYG{n}{exit}\PYG{p}{(}\PYG{l+m+mi}{1}\PYG{p}{)}
+    \PYG{k}{else}\PYG{p}{:}
+        \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Velocidad inicial necesaria: v0 = }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{v0\PYGZus{}record}\PYG{l+s+si}{:}\PYG{l+s+s2}{.2f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ m/s\PYGZdq{}}\PYG{p}{)}
+        \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}(Para alcanzar }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{record\PYGZus{}distance}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ m con C\PYGZus{}D = }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{cd}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{)\PYGZdq{}}\PYG{p}{)}
+        \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}=\PYGZdq{}}\PYG{o}{*}\PYG{l+m+mi}{70}\PYG{p}{)}
+
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{\PYGZdq{}} \PYG{o}{+} \PYG{l+s+s2}{\PYGZdq{}=\PYGZdq{}}\PYG{o}{*}\PYG{l+m+mi}{70}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}TRAYECTORIAS EN LOS TRES REGÍMENES\PYGZdq{}}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}=\PYGZdq{}}\PYG{o}{*}\PYG{l+m+mi}{70}\PYG{p}{)}
+
+\PYG{n}{solutions} \PYG{o}{=} \PYG{p}{[]} \PYG{c+c1}{\PYGZsh{} Almacenar soluciones para cada régimen}
+\PYG{n}{times\PYGZus{}list} \PYG{o}{=} \PYG{p}{[]} \PYG{c+c1}{\PYGZsh{} Almacenar tiempos para cada régimen}
+\PYG{n}{distances\PYGZus{}list} \PYG{o}{=} \PYG{p}{[]} \PYG{c+c1}{\PYGZsh{} Almacenar distancias alcanzadas}
+\PYG{n}{labels} \PYG{o}{=} \PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}Sin fricción\PYGZsq{}}\PYG{p}{,} \PYG{l+s+s1}{\PYGZsq{}Flujo laminar\PYGZsq{}}\PYG{p}{,} \PYG{l+s+s1}{\PYGZsq{}Flujo inestable oscilante\PYGZsq{}}\PYG{p}{]} \PYG{c+c1}{\PYGZsh{} Etiquetas para los regímenes}
+\PYG{n}{cd\PYGZus{}labels} \PYG{o}{=} \PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}C\PYGZus{}D = 0.0\PYGZsq{}}\PYG{p}{,} \PYG{l+s+s1}{\PYGZsq{}C\PYGZus{}D = 0.5\PYGZsq{}}\PYG{p}{,} \PYG{l+s+s1}{\PYGZsq{}C\PYGZus{}D = 0.75\PYGZsq{}}\PYG{p}{]} \PYG{c+c1}{\PYGZsh{} Etiquetas para los coeficientes de arrastre}
+\PYG{n}{colors} \PYG{o}{=} \PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}\PYGZsh{}2E86AB\PYGZsq{}}\PYG{p}{,} \PYG{l+s+s1}{\PYGZsq{}\PYGZsh{}A23B72\PYGZsq{}}\PYG{p}{,} \PYG{l+s+s1}{\PYGZsq{}\PYGZsh{}F18F01\PYGZsq{}}\PYG{p}{]} \PYG{c+c1}{\PYGZsh{} Colores para las gráficas}
+
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{Calculando trayectorias...\PYGZdq{}}\PYG{p}{)}
+\PYG{k}{for} \PYG{n}{i}\PYG{p}{,} \PYG{n}{cd} \PYG{o+ow}{in} \PYG{n+nb}{enumerate}\PYG{p}{(}\PYG{n}{drag\PYGZus{}coeffs}\PYG{p}{):} \PYG{c+c1}{\PYGZsh{} Iterar sobre los coeficientes de arrastre}
+    \PYG{n}{k} \PYG{o}{=} \PYG{n}{rho} \PYG{o}{*} \PYG{n}{A} \PYG{o}{*} \PYG{n}{cd} \PYG{o}{/} \PYG{l+m+mf}{2.0}
+    \PYG{n}{distance}\PYG{p}{,} \PYG{n}{time} \PYG{o}{=} \PYG{n}{distance\PYGZus{}reached}\PYG{p}{(}\PYG{n}{array}\PYG{p}{([}\PYG{n}{x0}\PYG{p}{,} \PYG{n}{y0}\PYG{p}{]),} \PYG{n}{v\PYGZus{}aux}\PYG{p}{[}\PYG{n}{i}\PYG{p}{],} \PYG{n}{k}\PYG{p}{)} \PYG{c+c1}{\PYGZsh{} Calcular distancia alcanzada}
+    \PYG{n}{distances\PYGZus{}list}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{n}{distance}\PYG{p}{)}     \PYG{c+c1}{\PYGZsh{} Almacenar distancia alcanzada}
+
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{labels}\PYG{p}{[}\PYG{n}{i}\PYG{p}{]}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ (}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{cd\PYGZus{}labels}\PYG{p}{[}\PYG{n}{i}\PYG{p}{]}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{):\PYGZdq{}}\PYG{p}{)}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}  Distancia alcanzada: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{distance}\PYG{l+s+si}{:}\PYG{l+s+s2}{.2f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ m\PYGZdq{}}\PYG{p}{)} \PYG{c+c1}{\PYGZsh{} Almacenar distancia alcanzada}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}  Tiempo de vuelo: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{time}\PYG{l+s+si}{:}\PYG{l+s+s2}{.2f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ s\PYGZdq{}}\PYG{p}{)} \PYG{c+c1}{\PYGZsh{} Almacenar tiempo de vuelo}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}  Velocidad inicial: v0 = }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{v\PYGZus{}aux}\PYG{p}{[}\PYG{n}{i}\PYG{p}{]}\PYG{l+s+si}{:}\PYG{l+s+s2}{.2f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ m/s\PYGZdq{}}\PYG{p}{)}
+
+    \PYG{n}{sol}\PYG{p}{,} \PYG{n}{t} \PYG{o}{=} \PYG{n}{get\PYGZus{}full\PYGZus{}trajectory}\PYG{p}{(}\PYG{n}{array}\PYG{p}{([}\PYG{n}{x0}\PYG{p}{,} \PYG{n}{y0}\PYG{p}{]),} \PYG{n}{v\PYGZus{}aux}\PYG{p}{[}\PYG{n}{i}\PYG{p}{],} \PYG{n}{k}\PYG{p}{,} \PYG{n}{time}\PYG{p}{)} \PYG{c+c1}{\PYGZsh{} Obtener trayectoria completa}
+    \PYG{n}{solutions}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{n}{sol}\PYG{p}{)} \PYG{c+c1}{\PYGZsh{} Almacenar solución}
+    \PYG{n}{times\PYGZus{}list}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{n}{t}\PYG{p}{)} \PYG{c+c1}{\PYGZsh{} Almacenar tiempos}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}=\PYGZdq{}}\PYG{o}{*}\PYG{l+m+mi}{70}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Calculo de las trayectorias con la velocidad inicial dada con C\PYGZus{}D = 0.0: v0 =\PYGZdq{}}\PYG{p}{,}\PYG{n}{v\PYGZus{}aux}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{])}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{Calculando trayectorias...\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{sols}\PYG{o}{=}\PYG{p}{[]} \PYG{c+c1}{\PYGZsh{} Almacenar soluciones para cada régimen}
+\PYG{n}{tims}\PYG{o}{=}\PYG{p}{[]} \PYG{c+c1}{\PYGZsh{} Almacenar tiempos para cada régimen}
+\PYG{n}{dists}\PYG{o}{=}\PYG{p}{[]} \PYG{c+c1}{\PYGZsh{} Almacenar distancias alcanzadas}
+\PYG{k}{for} \PYG{n}{i}\PYG{p}{,} \PYG{n}{cd} \PYG{o+ow}{in} \PYG{n+nb}{enumerate}\PYG{p}{(}\PYG{n}{drag\PYGZus{}coeffs}\PYG{p}{):} \PYG{c+c1}{\PYGZsh{} Iterar sobre los coeficientes de arrastre}
+    \PYG{n}{k} \PYG{o}{=} \PYG{n}{rho} \PYG{o}{*} \PYG{n}{A} \PYG{o}{*} \PYG{n}{cd} \PYG{o}{/} \PYG{l+m+mf}{2.0}
+    \PYG{n}{distance}\PYG{p}{,} \PYG{n}{time} \PYG{o}{=} \PYG{n}{distance\PYGZus{}reached}\PYG{p}{(}\PYG{n}{array}\PYG{p}{([}\PYG{n}{x0}\PYG{p}{,} \PYG{n}{y0}\PYG{p}{]),} \PYG{n}{v\PYGZus{}aux}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{],} \PYG{n}{k}\PYG{p}{)} \PYG{c+c1}{\PYGZsh{} Calcular distancia alcanzada}
+    \PYG{n}{dists}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{n}{distance}\PYG{p}{)}     \PYG{c+c1}{\PYGZsh{} Almacenar distancia alcanzada}
+
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{labels}\PYG{p}{[}\PYG{n}{i}\PYG{p}{]}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ (}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{cd\PYGZus{}labels}\PYG{p}{[}\PYG{n}{i}\PYG{p}{]}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{):\PYGZdq{}}\PYG{p}{)}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}  Distancia alcanzada: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{distance}\PYG{l+s+si}{:}\PYG{l+s+s2}{.2f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ m\PYGZdq{}}\PYG{p}{)} \PYG{c+c1}{\PYGZsh{} Almacenar distancia alcanzada}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}  Tiempo de vuelo: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{time}\PYG{l+s+si}{:}\PYG{l+s+s2}{.2f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ s\PYGZdq{}}\PYG{p}{)} \PYG{c+c1}{\PYGZsh{} Almacenar tiempo de vuelo}
+
+    \PYG{n}{sol}\PYG{p}{,} \PYG{n}{t} \PYG{o}{=} \PYG{n}{get\PYGZus{}full\PYGZus{}trajectory}\PYG{p}{(}\PYG{n}{array}\PYG{p}{([}\PYG{n}{x0}\PYG{p}{,} \PYG{n}{y0}\PYG{p}{]),} \PYG{n}{v\PYGZus{}aux}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{],} \PYG{n}{k}\PYG{p}{,} \PYG{n}{time}\PYG{p}{)} \PYG{c+c1}{\PYGZsh{} Obtener trayectoria completa}
+    \PYG{n}{sols}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{n}{sol}\PYG{p}{)} \PYG{c+c1}{\PYGZsh{} Almacenar solución}
+    \PYG{n}{tims}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{n}{t}\PYG{p}{)} \PYG{c+c1}{\PYGZsh{} Almacenar tiempos}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}=\PYGZdq{}}\PYG{o}{*}\PYG{l+m+mi}{70}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{} GENERANDO GRÁFICAS POR RÉGIMEN...\PYGZdq{}}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}=\PYGZdq{}}\PYG{o}{*}\PYG{l+m+mi}{70}\PYG{p}{)}
+
+\PYG{k}{for} \PYG{n}{i}\PYG{p}{,} \PYG{p}{(}\PYG{n}{sol}\PYG{p}{,} \PYG{n}{t}\PYG{p}{,} \PYG{n}{cd}\PYG{p}{,} \PYG{n}{label}\PYG{p}{,} \PYG{n}{cd\PYGZus{}label}\PYG{p}{,} \PYG{n}{color}\PYG{p}{,} \PYG{n}{distance}\PYG{p}{)} \PYG{o+ow}{in} \PYG{n+nb}{enumerate}\PYG{p}{(}
+    \PYG{n+nb}{zip}\PYG{p}{(}\PYG{n}{solutions}\PYG{p}{,} \PYG{n}{times\PYGZus{}list}\PYG{p}{,} \PYG{n}{drag\PYGZus{}coeffs}\PYG{p}{,} \PYG{n}{labels}\PYG{p}{,} \PYG{n}{cd\PYGZus{}labels}\PYG{p}{,} \PYG{n}{colors}\PYG{p}{,} \PYG{n}{distances\PYGZus{}list}\PYG{p}{)):}
+
+    \PYG{c+c1}{\PYGZsh{} Crear figura con 2 subplots}
+    \PYG{n}{fig}\PYG{p}{,} \PYG{p}{(}\PYG{n}{ax1}\PYG{p}{,} \PYG{n}{ax2}\PYG{p}{)} \PYG{o}{=} \PYG{n}{subplots}\PYG{p}{(}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{2}\PYG{p}{,} \PYG{n}{figsize}\PYG{o}{=}\PYG{p}{(}\PYG{l+m+mi}{14}\PYG{p}{,} \PYG{l+m+mi}{5}\PYG{p}{))}
+    \PYG{n}{fig}\PYG{o}{.}\PYG{n}{suptitle}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s1}{\PYGZsq{}}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{label}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{cd\PYGZus{}label}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s1}{ | v₀ = }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{v\PYGZus{}aux}\PYG{p}{[}\PYG{n}{i}\PYG{p}{]}\PYG{l+s+si}{:}\PYG{l+s+s1}{.2f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s1}{ m/s\PYGZsq{}}\PYG{p}{,}
+                 \PYG{n}{fontsize}\PYG{o}{=}\PYG{l+m+mi}{15}\PYG{p}{,} \PYG{n}{fontweight}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}bold\PYGZsq{}}\PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} Subplot 1: Trayectoria y = y(x)}
+    \PYG{n}{ax1}\PYG{o}{.}\PYG{n}{plot}\PYG{p}{(}\PYG{n}{sol}\PYG{p}{[:,} \PYG{l+m+mi}{0}\PYG{p}{],} \PYG{n}{sol}\PYG{p}{[:,} \PYG{l+m+mi}{2}\PYG{p}{],} \PYG{n}{color}\PYG{o}{=}\PYG{n}{color}\PYG{p}{,} \PYG{n}{linewidth}\PYG{o}{=}\PYG{l+m+mi}{3}\PYG{p}{,} \PYG{n}{label}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}Trayectoria\PYGZsq{}}\PYG{p}{)}
+    \PYG{n}{ax1}\PYG{o}{.}\PYG{n}{axhline}\PYG{p}{(}\PYG{n}{y}\PYG{o}{=}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{n}{color}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}black\PYGZsq{}}\PYG{p}{,} \PYG{n}{linewidth}\PYG{o}{=}\PYG{l+m+mf}{1.5}\PYG{p}{,} \PYG{n}{linestyle}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}\PYGZhy{}\PYGZhy{}\PYGZsq{}}\PYG{p}{,} \PYG{n}{alpha}\PYG{o}{=}\PYG{l+m+mf}{0.7}\PYG{p}{)}
+    \PYG{n}{ax1}\PYG{o}{.}\PYG{n}{set\PYGZus{}xlabel}\PYG{p}{(}\PYG{l+s+s1}{\PYGZsq{}Distancia horizontal x (m)\PYGZsq{}}\PYG{p}{,} \PYG{n}{fontsize}\PYG{o}{=}\PYG{l+m+mi}{12}\PYG{p}{)}
+    \PYG{n}{ax1}\PYG{o}{.}\PYG{n}{set\PYGZus{}ylabel}\PYG{p}{(}\PYG{l+s+s1}{\PYGZsq{}Altura y (m)\PYGZsq{}}\PYG{p}{,} \PYG{n}{fontsize}\PYG{o}{=}\PYG{l+m+mi}{12}\PYG{p}{)}
+    \PYG{n}{ax1}\PYG{o}{.}\PYG{n}{set\PYGZus{}title}\PYG{p}{(}\PYG{l+s+s1}{\PYGZsq{}Trayectoria y = y(x)\PYGZsq{}}\PYG{p}{,} \PYG{n}{fontsize}\PYG{o}{=}\PYG{l+m+mi}{13}\PYG{p}{,} \PYG{n}{fontweight}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}bold\PYGZsq{}}\PYG{p}{)}
+    \PYG{n}{ax1}\PYG{o}{.}\PYG{n}{text}\PYG{p}{(}\PYG{l+m+mf}{0.98}\PYG{p}{,} \PYG{l+m+mf}{0.95}\PYG{p}{,} \PYG{l+s+sa}{f}\PYG{l+s+s1}{\PYGZsq{}Alcance: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{distance}\PYG{l+s+si}{:}\PYG{l+s+s1}{.2f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s1}{ m\PYGZsq{}}\PYG{p}{,}
+             \PYG{n}{transform}\PYG{o}{=}\PYG{n}{ax1}\PYG{o}{.}\PYG{n}{transAxes}\PYG{p}{,} \PYG{n}{fontsize}\PYG{o}{=}\PYG{l+m+mi}{11}\PYG{p}{,}
+             \PYG{n}{verticalalignment}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}top\PYGZsq{}}\PYG{p}{,} \PYG{n}{horizontalalignment}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}right\PYGZsq{}}\PYG{p}{,}
+             \PYG{n}{bbox}\PYG{o}{=}\PYG{n+nb}{dict}\PYG{p}{(}\PYG{n}{boxstyle}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}round\PYGZsq{}}\PYG{p}{,} \PYG{n}{facecolor}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}wheat\PYGZsq{}}\PYG{p}{,} \PYG{n}{alpha}\PYG{o}{=}\PYG{l+m+mf}{0.85}\PYG{p}{))}
+    \PYG{n}{ax1}\PYG{o}{.}\PYG{n}{grid}\PYG{p}{(}\PYG{k+kc}{True}\PYG{p}{,} \PYG{n}{alpha}\PYG{o}{=}\PYG{l+m+mf}{0.4}\PYG{p}{)}
+    \PYG{n}{ax1}\PYG{o}{.}\PYG{n}{set\PYGZus{}xlim}\PYG{p}{(}\PYG{n}{left}\PYG{o}{=}\PYG{l+m+mi}{0}\PYG{p}{)}
+    \PYG{n}{ax1}\PYG{o}{.}\PYG{n}{set\PYGZus{}ylim}\PYG{p}{(}\PYG{n}{bottom}\PYG{o}{=}\PYG{l+m+mi}{0}\PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} Subplot 2: Altura vs tiempo y = y(t)}
+    \PYG{n}{ax2}\PYG{o}{.}\PYG{n}{plot}\PYG{p}{(}\PYG{n}{t}\PYG{p}{,} \PYG{n}{sol}\PYG{p}{[:,} \PYG{l+m+mi}{2}\PYG{p}{],} \PYG{n}{color}\PYG{o}{=}\PYG{n}{color}\PYG{p}{,} \PYG{n}{linewidth}\PYG{o}{=}\PYG{l+m+mi}{3}\PYG{p}{,} \PYG{n}{label}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}Altura\PYGZsq{}}\PYG{p}{)}
+    \PYG{n}{ax2}\PYG{o}{.}\PYG{n}{axhline}\PYG{p}{(}\PYG{n}{y}\PYG{o}{=}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{n}{color}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}black\PYGZsq{}}\PYG{p}{,} \PYG{n}{linewidth}\PYG{o}{=}\PYG{l+m+mf}{1.5}\PYG{p}{,} \PYG{n}{linestyle}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}\PYGZhy{}\PYGZhy{}\PYGZsq{}}\PYG{p}{,} \PYG{n}{alpha}\PYG{o}{=}\PYG{l+m+mf}{0.7}\PYG{p}{)}
+    \PYG{n}{ax2}\PYG{o}{.}\PYG{n}{set\PYGZus{}xlabel}\PYG{p}{(}\PYG{l+s+s1}{\PYGZsq{}Tiempo t (s)\PYGZsq{}}\PYG{p}{,} \PYG{n}{fontsize}\PYG{o}{=}\PYG{l+m+mi}{12}\PYG{p}{)}
+    \PYG{n}{ax2}\PYG{o}{.}\PYG{n}{set\PYGZus{}ylabel}\PYG{p}{(}\PYG{l+s+s1}{\PYGZsq{}Altura y (m)\PYGZsq{}}\PYG{p}{,} \PYG{n}{fontsize}\PYG{o}{=}\PYG{l+m+mi}{12}\PYG{p}{)}
+    \PYG{n}{ax2}\PYG{o}{.}\PYG{n}{set\PYGZus{}title}\PYG{p}{(}\PYG{l+s+s1}{\PYGZsq{}Dependencia temporal y = y(t)\PYGZsq{}}\PYG{p}{,} \PYG{n}{fontsize}\PYG{o}{=}\PYG{l+m+mi}{13}\PYG{p}{,} \PYG{n}{fontweight}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}bold\PYGZsq{}}\PYG{p}{)}
+    \PYG{n}{ax2}\PYG{o}{.}\PYG{n}{text}\PYG{p}{(}\PYG{l+m+mf}{0.98}\PYG{p}{,} \PYG{l+m+mf}{0.95}\PYG{p}{,} \PYG{l+s+sa}{f}\PYG{l+s+s1}{\PYGZsq{}Tiempo: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{t}\PYG{p}{[}\PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{]}\PYG{l+s+si}{:}\PYG{l+s+s1}{.2f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s1}{ s\PYGZsq{}}\PYG{p}{,}
+             \PYG{n}{transform}\PYG{o}{=}\PYG{n}{ax2}\PYG{o}{.}\PYG{n}{transAxes}\PYG{p}{,} \PYG{n}{fontsize}\PYG{o}{=}\PYG{l+m+mi}{11}\PYG{p}{,}
+             \PYG{n}{verticalalignment}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}top\PYGZsq{}}\PYG{p}{,} \PYG{n}{horizontalalignment}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}right\PYGZsq{}}\PYG{p}{,}
+             \PYG{n}{bbox}\PYG{o}{=}\PYG{n+nb}{dict}\PYG{p}{(}\PYG{n}{boxstyle}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}round\PYGZsq{}}\PYG{p}{,} \PYG{n}{facecolor}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}lightblue\PYGZsq{}}\PYG{p}{,} \PYG{n}{alpha}\PYG{o}{=}\PYG{l+m+mf}{0.85}\PYG{p}{))}
+    \PYG{n}{ax2}\PYG{o}{.}\PYG{n}{grid}\PYG{p}{(}\PYG{k+kc}{True}\PYG{p}{,} \PYG{n}{alpha}\PYG{o}{=}\PYG{l+m+mf}{0.4}\PYG{p}{)}
+    \PYG{n}{ax2}\PYG{o}{.}\PYG{n}{set\PYGZus{}xlim}\PYG{p}{(}\PYG{n}{left}\PYG{o}{=}\PYG{l+m+mi}{0}\PYG{p}{)}
+    \PYG{n}{ax2}\PYG{o}{.}\PYG{n}{set\PYGZus{}ylim}\PYG{p}{(}\PYG{n}{bottom}\PYG{o}{=}\PYG{l+m+mi}{0}\PYG{p}{)}
+
+    \PYG{n}{tight\PYGZus{}layout}\PYG{p}{()}
+    \PYG{n}{filename} \PYG{o}{=} \PYG{l+s+sa}{f}\PYG{l+s+s1}{\PYGZsq{}}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{output\PYGZus{}dir}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s1}{/regimen\PYGZus{}}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{i}\PYG{o}{+}\PYG{l+m+mi}{1}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s1}{\PYGZus{}CD\PYGZus{}}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{cd}\PYG{l+s+si}{:}\PYG{l+s+s1}{.2f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s1}{.png\PYGZsq{}}
+    \PYG{n}{savefig}\PYG{p}{(}\PYG{n}{filename}\PYG{p}{,} \PYG{n}{dpi}\PYG{o}{=}\PYG{l+m+mi}{300}\PYG{p}{,} \PYG{n}{bbox\PYGZus{}inches}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}tight\PYGZsq{}}\PYG{p}{)}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Guardado: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{filename}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+    \PYG{n}{show}\PYG{p}{()}
+    \PYG{n}{close}\PYG{p}{(}\PYG{n}{fig}\PYG{p}{)}
+
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{\PYGZdq{}} \PYG{o}{+} \PYG{l+s+s2}{\PYGZdq{}=\PYGZdq{}}\PYG{o}{*}\PYG{l+m+mi}{70}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}INFLUENCIA DE LA FRICCIÓN\PYGZdq{}}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}=\PYGZdq{}}\PYG{o}{*}\PYG{l+m+mi}{70}\PYG{p}{)}
+
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{\PYGZdq{}} \PYG{o}{+} \PYG{l+s+s2}{\PYGZdq{}\PYGZhy{}\PYGZdq{}}\PYG{o}{*}\PYG{l+m+mi}{70}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+si}{\PYGZob{}}\PYG{l+s+s1}{\PYGZsq{}Régimen\PYGZsq{}}\PYG{l+s+si}{:}\PYG{l+s+s2}{\PYGZlt{}35}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ }\PYG{l+s+si}{\PYGZob{}}\PYG{l+s+s1}{\PYGZsq{}Distancia (m)\PYGZsq{}}\PYG{l+s+si}{:}\PYG{l+s+s2}{\PYGZlt{}15}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ }\PYG{l+s+si}{\PYGZob{}}\PYG{l+s+s1}{\PYGZsq{}Pérdida (m)\PYGZsq{}}\PYG{l+s+si}{:}\PYG{l+s+s2}{\PYGZlt{}15}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ }\PYG{l+s+si}{\PYGZob{}}\PYG{l+s+s1}{\PYGZsq{}Pérdida (\PYGZpc{})\PYGZsq{}}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}\PYGZhy{}\PYGZdq{}}\PYG{o}{*}\PYG{l+m+mi}{70}\PYG{p}{)}
+
+\PYG{n}{losses\PYGZus{}m} \PYG{o}{=} \PYG{p}{[]}
+\PYG{n}{losses\PYGZus{}pct} \PYG{o}{=} \PYG{p}{[]}
+
+\PYG{k}{for} \PYG{n}{cd}\PYG{p}{,} \PYG{n}{dist}\PYG{p}{,} \PYG{n}{label} \PYG{o+ow}{in} \PYG{n+nb}{zip}\PYG{p}{(}\PYG{n}{drag\PYGZus{}coeffs}\PYG{p}{,} \PYG{n}{dists}\PYG{p}{,} \PYG{n}{labels}\PYG{p}{):}
+    \PYG{k}{if} \PYG{n}{dist} \PYG{o}{\PYGZgt{}} \PYG{l+m+mi}{0}\PYG{p}{:}
+        \PYG{n}{loss\PYGZus{}m} \PYG{o}{=} \PYG{n}{record\PYGZus{}distance} \PYG{o}{\PYGZhy{}} \PYG{n}{dist}
+        \PYG{n}{loss\PYGZus{}pct} \PYG{o}{=} \PYG{p}{(}\PYG{n}{loss\PYGZus{}m} \PYG{o}{/} \PYG{n}{record\PYGZus{}distance}\PYG{p}{)} \PYG{o}{*} \PYG{l+m+mi}{100}
+        \PYG{n}{losses\PYGZus{}m}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{n}{loss\PYGZus{}m}\PYG{p}{)}
+        \PYG{n}{losses\PYGZus{}pct}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{n}{loss\PYGZus{}pct}\PYG{p}{)}
+
+        \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{label}\PYG{l+s+si}{:}\PYG{l+s+s2}{\PYGZlt{}35}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{dist}\PYG{l+s+si}{:}\PYG{l+s+s2}{\PYGZlt{}15.2f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{loss\PYGZus{}m}\PYG{l+s+si}{:}\PYG{l+s+s2}{\PYGZlt{}15.2f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{loss\PYGZus{}pct}\PYG{l+s+si}{:}\PYG{l+s+s2}{\PYGZgt{}6.2f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZpc{}\PYGZdq{}}\PYG{p}{)}
+    \PYG{k}{else}\PYG{p}{:}
+        \PYG{n}{losses\PYGZus{}m}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{l+m+mi}{0}\PYG{p}{)}
+        \PYG{n}{losses\PYGZus{}pct}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{l+m+mi}{0}\PYG{p}{)}
+        \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{label}\PYG{l+s+si}{:}\PYG{l+s+s2}{\PYGZlt{}35}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ }\PYG{l+s+si}{\PYGZob{}}\PYG{l+s+s1}{\PYGZsq{}N/A\PYGZsq{}}\PYG{l+s+si}{:}\PYG{l+s+s2}{\PYGZlt{}15}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ }\PYG{l+s+si}{\PYGZob{}}\PYG{l+s+s1}{\PYGZsq{}N/A\PYGZsq{}}\PYG{l+s+si}{:}\PYG{l+s+s2}{\PYGZlt{}15}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ }\PYG{l+s+si}{\PYGZob{}}\PYG{l+s+s1}{\PYGZsq{}N/A\PYGZsq{}}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}\PYGZhy{}\PYGZdq{}}\PYG{o}{*}\PYG{l+m+mi}{70}\PYG{p}{)}
+
+\PYG{c+c1}{\PYGZsh{} Resumen final}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{\PYGZdq{}} \PYG{o}{+} \PYG{l+s+s2}{\PYGZdq{}=\PYGZdq{}}\PYG{o}{*}\PYG{l+m+mi}{70}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{} RESUMEN DE RESULTADOS\PYGZdq{}}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}=\PYGZdq{}}\PYG{o}{*}\PYG{l+m+mi}{70}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{Velocidad inicial (sin fricción): v0 = }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{v0\PYGZus{}record}\PYG{l+s+si}{:}\PYG{l+s+s2}{.2f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ m/s\PYGZdq{}}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Distancia récord objetivo: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{record\PYGZus{}distance}\PYG{l+s+si}{:}\PYG{l+s+s2}{.2f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ m}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+
+\PYG{k}{if} \PYG{n}{losses\PYGZus{}m}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]} \PYG{o}{\PYGZgt{}} \PYG{l+m+mi}{0}\PYG{p}{:}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Flujo laminar (C\PYGZus{}D = 0.5):\PYGZdq{}}\PYG{p}{)}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}  \PYGZhy{}\PYGZgt{}Reduce }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{losses\PYGZus{}m}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]}\PYG{l+s+si}{:}\PYG{l+s+s2}{.2f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ m (}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{losses\PYGZus{}pct}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]}\PYG{l+s+si}{:}\PYG{l+s+s2}{.1f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZpc{})\PYGZdq{}}\PYG{p}{)}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}  \PYGZhy{}\PYGZgt{} Alcance: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{distances\PYGZus{}list}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]}\PYG{l+s+si}{:}\PYG{l+s+s2}{.2f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ m}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+
+\PYG{k}{if} \PYG{n}{losses\PYGZus{}m}\PYG{p}{[}\PYG{l+m+mi}{2}\PYG{p}{]} \PYG{o}{\PYGZgt{}} \PYG{l+m+mi}{0}\PYG{p}{:}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Flujo inestable oscilante (C\PYGZus{}D = 0.75):\PYGZdq{}}\PYG{p}{)}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}  \PYGZhy{}\PYGZgt{} Reduce }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{losses\PYGZus{}m}\PYG{p}{[}\PYG{l+m+mi}{2}\PYG{p}{]}\PYG{l+s+si}{:}\PYG{l+s+s2}{.2f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ m (}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{losses\PYGZus{}pct}\PYG{p}{[}\PYG{l+m+mi}{2}\PYG{p}{]}\PYG{l+s+si}{:}\PYG{l+s+s2}{.1f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZpc{})\PYGZdq{}}\PYG{p}{)}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}  \PYGZhy{}\PYGZgt{} Alcance: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{distances\PYGZus{}list}\PYG{p}{[}\PYG{l+m+mi}{2}\PYG{p}{]}\PYG{l+s+si}{:}\PYG{l+s+s2}{.2f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ m}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}CONCLUSIÓN:\PYGZdq{}}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}La fricción del aire reduce el alcance hasta en }\PYG{l+s+si}{\PYGZob{}}\PYG{n+nb}{max}\PYG{p}{(}\PYG{n}{losses\PYGZus{}pct}\PYG{p}{)}\PYG{l+s+si}{:}\PYG{l+s+s2}{.1f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZpc{},\PYGZdq{}}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}lo que representa una pérdida máxima de }\PYG{l+s+si}{\PYGZob{}}\PYG{n+nb}{max}\PYG{p}{(}\PYG{n}{losses\PYGZus{}m}\PYG{p}{)}\PYG{l+s+si}{:}\PYG{l+s+s2}{.2f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ metros.\PYGZdq{}}\PYG{p}{)}
+
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{\PYGZdq{}} \PYG{o}{+} \PYG{l+s+s2}{\PYGZdq{}=\PYGZdq{}}\PYG{o}{*}\PYG{l+m+mi}{70}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{} PROCESO COMPLETADO\PYGZdq{}}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}=\PYGZdq{}}\PYG{o}{*}\PYG{l+m+mi}{70}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{Archivos generados en \PYGZsq{}}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{output\PYGZus{}dir}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{/\PYGZsq{}:\PYGZdq{}}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}  * regimen\PYGZus{}1\PYGZus{}CD\PYGZus{}0.00.png \PYGZhy{} Sin fricción\PYGZdq{}}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}  * regimen\PYGZus{}2\PYGZus{}CD\PYGZus{}0.50.png \PYGZhy{} Flujo laminar\PYGZdq{}}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}  * regimen\PYGZus{}3\PYGZus{}CD\PYGZus{}0.75.png \PYGZhy{} Flujo inestable oscilante\PYGZdq{}}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}=\PYGZdq{}}\PYG{o}{*}\PYG{l+m+mi}{70} \PYG{o}{+} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+\end{MintedVerbatim}
