@@ -1,0 +1,367 @@
+\begin{MintedVerbatim}[commandchars=\\\{\},codes={\catcode`\$=3\catcode`\^=7\catcode`\_=8\relax}]
+\PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{os}
+\PYG{k+kn}{import}\PYG{+w}{ }\PYG{n+nn}{numpy}\PYG{+w}{ }\PYG{k}{as}\PYG{+w}{ }\PYG{n+nn}{np}
+\PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{pylab}\PYG{+w}{ }\PYG{k+kn}{import} \PYG{o}{*}
+\PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{rich.console}\PYG{+w}{ }\PYG{k+kn}{import} \PYG{n}{Console}
+\PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{rich.table}\PYG{+w}{ }\PYG{k+kn}{import} \PYG{n}{Table}
+\PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{scipy.integrate}\PYG{+w}{ }\PYG{k+kn}{import} \PYG{n}{odeint}
+
+\PYG{c+c1}{\PYGZsh{} Cosas importantes pero no tan importantes que la física}
+\PYG{n}{output\PYGZus{}dir} \PYG{o}{=} \PYG{l+s+s2}{\PYGZdq{}resultados\PYGZus{}harm\PYGZus{}test\PYGZdq{}}  \PYG{c+c1}{\PYGZsh{} Para guardar mis cosas}
+\PYG{k}{if} \PYG{o+ow}{not} \PYG{n}{os}\PYG{o}{.}\PYG{n}{path}\PYG{o}{.}\PYG{n}{exists}\PYG{p}{(}\PYG{n}{output\PYGZus{}dir}\PYG{p}{):}
+    \PYG{n}{os}\PYG{o}{.}\PYG{n}{makedirs}\PYG{p}{(}\PYG{n}{output\PYGZus{}dir}\PYG{p}{)}
+\PYG{n}{console} \PYG{o}{=} \PYG{n}{Console}\PYG{p}{()}  \PYG{c+c1}{\PYGZsh{} Para que se vea bonito}
+
+\PYG{c+c1}{\PYGZsh{} definimos lo importante: las constantes físicas del sistema}
+\PYG{n}{N} \PYG{o}{=} \PYG{l+m+mi}{2000}  \PYG{c+c1}{\PYGZsh{} numero de pasos}
+\PYG{n}{m} \PYG{o}{=} \PYG{p}{[}\PYG{l+m+mf}{1.0}\PYG{p}{,} \PYG{l+m+mf}{2.0}\PYG{p}{,} \PYG{l+m+mf}{0.5}\PYG{p}{]}  \PYG{c+c1}{\PYGZsh{} masa de los bloques la de 2. va con [4] y la de 0.5 con [5]}
+\PYG{n}{k} \PYG{o}{=} \PYG{p}{[}\PYG{l+m+mf}{12.0}\PYG{p}{,} \PYG{l+m+mf}{10.0}\PYG{p}{,} \PYG{l+m+mf}{8.0}\PYG{p}{,} \PYG{l+m+mf}{15.0}\PYG{p}{,} \PYG{l+m+mf}{10.0}\PYG{p}{,} \PYG{l+m+mf}{20.0}\PYG{p}{]}  \PYG{c+c1}{\PYGZsh{} constante de los resortes externos}
+\PYG{n}{k\PYGZus{}c} \PYG{o}{=} \PYG{p}{[}\PYG{l+m+mf}{4.0}\PYG{p}{,} \PYG{l+m+mf}{2.0}\PYG{p}{,} \PYG{l+m+mf}{12.0}\PYG{p}{,} \PYG{l+m+mf}{5.0}\PYG{p}{,} \PYG{l+m+mf}{4.0}\PYG{p}{,} \PYG{l+m+mf}{8.0}\PYG{p}{]}  \PYG{c+c1}{\PYGZsh{} constante del resorte central}
+\PYG{n}{tau} \PYG{o}{=} \PYG{l+m+mf}{30.0}  \PYG{c+c1}{\PYGZsh{} tiempo de la simulación}
+\PYG{n}{h} \PYG{o}{=} \PYG{n}{tau} \PYG{o}{/} \PYG{n+nb}{float}\PYG{p}{(}\PYG{n}{N} \PYG{o}{\PYGZhy{}} \PYG{l+m+mi}{1}\PYG{p}{)}  \PYG{c+c1}{\PYGZsh{} el paso del gigante (del tiempo)}
+
+\PYG{n}{ttime} \PYG{o}{=} \PYG{n}{linspace}\PYG{p}{(}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{n}{tau}\PYG{p}{,} \PYG{n}{N}\PYG{p}{)}  \PYG{c+c1}{\PYGZsh{} Generamos tiempo}
+
+
+\PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{calcular\PYGZus{}periodo}\PYG{p}{(}\PYG{n}{t}\PYG{p}{,} \PYG{n}{x}\PYG{p}{):}
+\PYG{+w}{    }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+\PYG{l+s+sd}{    Calcula el periodo promedio encontrando cruces por cero.}
+\PYG{l+s+sd}{    \PYGZdq{}\PYGZdq{}\PYGZdq{}}
+    \PYG{c+c1}{\PYGZsh{} Encontrar cruces por cero con pendiente positiva}
+    \PYG{n}{cruces} \PYG{o}{=} \PYG{p}{[]}
+    \PYG{k}{for} \PYG{n}{i} \PYG{o+ow}{in} \PYG{n+nb}{range}\PYG{p}{(}\PYG{n+nb}{len}\PYG{p}{(}\PYG{n}{x}\PYG{p}{)} \PYG{o}{\PYGZhy{}} \PYG{l+m+mi}{1}\PYG{p}{):}
+        \PYG{k}{if} \PYG{n}{x}\PYG{p}{[}\PYG{n}{i}\PYG{p}{]} \PYG{o}{\PYGZlt{}=} \PYG{l+m+mi}{0} \PYG{o+ow}{and} \PYG{n}{x}\PYG{p}{[}\PYG{n}{i} \PYG{o}{+} \PYG{l+m+mi}{1}\PYG{p}{]} \PYG{o}{\PYGZgt{}} \PYG{l+m+mi}{0}\PYG{p}{:}  \PYG{c+c1}{\PYGZsh{} Cruce ascendente}
+            \PYG{c+c1}{\PYGZsh{} Interpolación lineal para mayor precisión}
+            \PYG{n}{t\PYGZus{}cruce} \PYG{o}{=} \PYG{n}{t}\PYG{p}{[}\PYG{n}{i}\PYG{p}{]} \PYG{o}{\PYGZhy{}} \PYG{n}{x}\PYG{p}{[}\PYG{n}{i}\PYG{p}{]} \PYG{o}{*} \PYG{p}{(}\PYG{n}{t}\PYG{p}{[}\PYG{n}{i} \PYG{o}{+} \PYG{l+m+mi}{1}\PYG{p}{]} \PYG{o}{\PYGZhy{}} \PYG{n}{t}\PYG{p}{[}\PYG{n}{i}\PYG{p}{])} \PYG{o}{/} \PYG{p}{(}\PYG{n}{x}\PYG{p}{[}\PYG{n}{i} \PYG{o}{+} \PYG{l+m+mi}{1}\PYG{p}{]} \PYG{o}{\PYGZhy{}} \PYG{n}{x}\PYG{p}{[}\PYG{n}{i}\PYG{p}{])}
+            \PYG{n}{cruces}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{n}{t\PYGZus{}cruce}\PYG{p}{)}
+
+    \PYG{k}{if} \PYG{n+nb}{len}\PYG{p}{(}\PYG{n}{cruces}\PYG{p}{)} \PYG{o}{\PYGZlt{}} \PYG{l+m+mi}{2}\PYG{p}{:}
+        \PYG{k}{return} \PYG{k+kc}{None}
+
+    \PYG{c+c1}{\PYGZsh{} Calcular diferencias entre cruces consecutivos (medio periodo)}
+    \PYG{c+c1}{\PYGZsh{} Multiplicar por 2 para obtener periodo completo}
+    \PYG{n}{periodos} \PYG{o}{=} \PYG{p}{[(}\PYG{n}{cruces}\PYG{p}{[}\PYG{n}{i} \PYG{o}{+} \PYG{l+m+mi}{1}\PYG{p}{]} \PYG{o}{\PYGZhy{}} \PYG{n}{cruces}\PYG{p}{[}\PYG{n}{i}\PYG{p}{])} \PYG{o}{*} \PYG{l+m+mi}{2} \PYG{k}{for} \PYG{n}{i} \PYG{o+ow}{in} \PYG{n+nb}{range}\PYG{p}{(}\PYG{n+nb}{len}\PYG{p}{(}\PYG{n}{cruces}\PYG{p}{)} \PYG{o}{\PYGZhy{}} \PYG{l+m+mi}{1}\PYG{p}{)]}
+
+    \PYG{k}{return} \PYG{n}{mean}\PYG{p}{(}\PYG{n}{periodos}\PYG{p}{)}
+
+
+\PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{coupled\PYGZus{}not\PYGZus{}linear}\PYG{p}{(}\PYG{n}{r}\PYG{p}{,} \PYG{n}{t}\PYG{p}{):}
+\PYG{+w}{    }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+\PYG{l+s+sd}{    Sistema de EDOs para osciladores acoplados NO LINEALES.}
+
+\PYG{l+s+sd}{    Fuerza no lineal: F = \PYGZhy{}k(x + 0.1x³)}
+
+\PYG{l+s+sd}{    Ecuaciones:}
+\PYG{l+s+sd}{        dx1/dt = v1}
+\PYG{l+s+sd}{        dv1/dt = \PYGZhy{}k/m·(x1 + 0.1x1³) \PYGZhy{} k\PYGZsq{}/m·[(x1\PYGZhy{}x2) + 0.1(x1\PYGZhy{}x2)³]}
+\PYG{l+s+sd}{        dx2/dt = v2}
+\PYG{l+s+sd}{        dv2/dt = \PYGZhy{}k/m·(x2 + 0.1x2³) \PYGZhy{} k\PYGZsq{}/m·[(x2\PYGZhy{}x1) + 0.1(x2\PYGZhy{}x1)³]}
+\PYG{l+s+sd}{    \PYGZdq{}\PYGZdq{}\PYGZdq{}}
+    \PYG{n}{r\PYGZus{}1} \PYG{o}{=} \PYG{n}{r}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]}
+    \PYG{n}{v\PYGZus{}1} \PYG{o}{=} \PYG{n}{r}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]}
+    \PYG{n}{r\PYGZus{}2} \PYG{o}{=} \PYG{n}{r}\PYG{p}{[}\PYG{l+m+mi}{2}\PYG{p}{]}
+    \PYG{n}{v\PYGZus{}2} \PYG{o}{=} \PYG{n}{r}\PYG{p}{[}\PYG{l+m+mi}{3}\PYG{p}{]}
+    \PYG{c+c1}{\PYGZsh{} Fuerzas no lineales:}
+    \PYG{n}{F1\PYGZus{}nolin} \PYG{o}{=} \PYG{o}{\PYGZhy{}}\PYG{n}{k}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]} \PYG{o}{/} \PYG{n}{m}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]} \PYG{o}{*} \PYG{p}{(}\PYG{n}{r\PYGZus{}1} \PYG{o}{+} \PYG{l+m+mf}{0.1} \PYG{o}{*} \PYG{n}{r\PYGZus{}1}\PYG{o}{**}\PYG{l+m+mi}{3}\PYG{p}{)}
+    \PYG{n}{F1\PYGZus{}coupled} \PYG{o}{=} \PYG{o}{\PYGZhy{}}\PYG{n}{k\PYGZus{}c}\PYG{p}{[}\PYG{l+m+mi}{3}\PYG{p}{]} \PYG{o}{/} \PYG{n}{m}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]} \PYG{o}{*} \PYG{p}{((}\PYG{n}{r\PYGZus{}1} \PYG{o}{\PYGZhy{}} \PYG{n}{r\PYGZus{}2}\PYG{p}{)} \PYG{o}{+} \PYG{l+m+mf}{0.1} \PYG{o}{*} \PYG{p}{(}\PYG{n}{r\PYGZus{}1} \PYG{o}{\PYGZhy{}} \PYG{n}{r\PYGZus{}2}\PYG{p}{)} \PYG{o}{**} \PYG{l+m+mi}{3}\PYG{p}{)}
+    \PYG{n}{F2\PYGZus{}nolin} \PYG{o}{=} \PYG{o}{\PYGZhy{}}\PYG{n}{k}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]} \PYG{o}{/} \PYG{n}{m}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]} \PYG{o}{*} \PYG{p}{(}\PYG{n}{r\PYGZus{}2} \PYG{o}{+} \PYG{l+m+mf}{0.1} \PYG{o}{*} \PYG{n}{r\PYGZus{}1}\PYG{o}{**}\PYG{l+m+mi}{3}\PYG{p}{)}
+    \PYG{n}{F2\PYGZus{}coupled} \PYG{o}{=} \PYG{o}{\PYGZhy{}}\PYG{n}{k\PYGZus{}c}\PYG{p}{[}\PYG{l+m+mi}{3}\PYG{p}{]} \PYG{o}{/} \PYG{n}{m}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]} \PYG{o}{*} \PYG{p}{((}\PYG{n}{r\PYGZus{}2} \PYG{o}{\PYGZhy{}} \PYG{n}{r\PYGZus{}1}\PYG{p}{)} \PYG{o}{+} \PYG{l+m+mf}{0.1} \PYG{o}{*} \PYG{p}{(}\PYG{n}{r\PYGZus{}2} \PYG{o}{\PYGZhy{}} \PYG{n}{r\PYGZus{}2}\PYG{p}{)} \PYG{o}{**} \PYG{l+m+mi}{3}\PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} Ecuaciones diferenciales:}
+    \PYG{n}{dx\PYGZus{}1\PYGZus{}dt} \PYG{o}{=} \PYG{n}{v\PYGZus{}1}
+    \PYG{n}{dv\PYGZus{}1\PYGZus{}dt} \PYG{o}{=} \PYG{n}{F1\PYGZus{}coupled} \PYG{o}{+} \PYG{n}{F1\PYGZus{}nolin}
+    \PYG{n}{dx\PYGZus{}2\PYGZus{}dt} \PYG{o}{=} \PYG{n}{v\PYGZus{}2}
+    \PYG{n}{dv\PYGZus{}2\PYGZus{}dt} \PYG{o}{=} \PYG{n}{F2\PYGZus{}coupled} \PYG{o}{+} \PYG{n}{F2\PYGZus{}nolin}
+    \PYG{k}{return} \PYG{n}{array}\PYG{p}{([}\PYG{n}{dx\PYGZus{}1\PYGZus{}dt}\PYG{p}{,} \PYG{n}{dv\PYGZus{}1\PYGZus{}dt}\PYG{p}{,} \PYG{n}{dx\PYGZus{}2\PYGZus{}dt}\PYG{p}{,} \PYG{n}{dv\PYGZus{}2\PYGZus{}dt}\PYG{p}{])}
+
+
+\PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{coupled}\PYG{p}{(}\PYG{n}{r}\PYG{p}{,} \PYG{n}{t}\PYG{p}{):}
+\PYG{+w}{    }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+\PYG{l+s+sd}{    Sistema para un oscilador armonico acoplado}
+
+\PYG{l+s+sd}{    Variables de estado:}
+\PYG{l+s+sd}{        r[0] = x\PYGZus{}1 Posición de la masa (de la izquierda)}
+\PYG{l+s+sd}{        r[1] = v\PYGZus{}1 Velocidad de la masa (de la izquierda)}
+\PYG{l+s+sd}{        r[2] = x\PYGZus{}2 Posición de la masa (de la derecha)}
+\PYG{l+s+sd}{        r[3] = v\PYGZus{}2 Velocidad de la masa (de la derecha)}
+
+\PYG{l+s+sd}{    Ecuaciones:}
+\PYG{l+s+sd}{        dx\PYGZus{}1/dt = v\PYGZus{}1}
+\PYG{l+s+sd}{        dv\PYGZus{}1/dt = \PYGZhy{}(k+k\PYGZus{}c)/m * x\PYGZus{}1 + k\PYGZus{}c/m*x\PYGZus{}2}
+\PYG{l+s+sd}{        dx\PYGZus{}2/dt = v\PYGZus{}2}
+\PYG{l+s+sd}{        dv\PYGZus{}2/dt = k\PYGZus{}c/m * x\PYGZus{}1 \PYGZhy{}(k+k\PYGZus{}c)/m * x\PYGZus{}2}
+\PYG{l+s+sd}{    \PYGZdq{}\PYGZdq{}\PYGZdq{}}
+    \PYG{n}{r\PYGZus{}1} \PYG{o}{=} \PYG{n}{r}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]}
+    \PYG{n}{v\PYGZus{}1} \PYG{o}{=} \PYG{n}{r}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]}
+    \PYG{n}{r\PYGZus{}2} \PYG{o}{=} \PYG{n}{r}\PYG{p}{[}\PYG{l+m+mi}{2}\PYG{p}{]}
+    \PYG{n}{v\PYGZus{}2} \PYG{o}{=} \PYG{n}{r}\PYG{p}{[}\PYG{l+m+mi}{3}\PYG{p}{]}
+    \PYG{n}{dx\PYGZus{}1\PYGZus{}dt} \PYG{o}{=} \PYG{n}{v\PYGZus{}1}
+    \PYG{n}{dv\PYGZus{}1\PYGZus{}dt} \PYG{o}{=} \PYG{o}{\PYGZhy{}}\PYG{p}{(}\PYG{n}{k}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]} \PYG{o}{+} \PYG{n}{k\PYGZus{}c}\PYG{p}{[}\PYG{l+m+mi}{3}\PYG{p}{])} \PYG{o}{/} \PYG{n}{m}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]} \PYG{o}{*} \PYG{n}{r\PYGZus{}1} \PYG{o}{+} \PYG{n}{k\PYGZus{}c}\PYG{p}{[}\PYG{l+m+mi}{3}\PYG{p}{]} \PYG{o}{/} \PYG{n}{m}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]} \PYG{o}{*} \PYG{n}{r\PYGZus{}2}
+    \PYG{n}{dx\PYGZus{}2\PYGZus{}dt} \PYG{o}{=} \PYG{n}{v\PYGZus{}2}
+    \PYG{n}{dv\PYGZus{}2\PYGZus{}dt} \PYG{o}{=} \PYG{n}{k\PYGZus{}c}\PYG{p}{[}\PYG{l+m+mi}{3}\PYG{p}{]} \PYG{o}{/} \PYG{n}{m}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]} \PYG{o}{*} \PYG{n}{r\PYGZus{}1} \PYG{o}{\PYGZhy{}} \PYG{p}{(}\PYG{n}{k}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]} \PYG{o}{+} \PYG{n}{k\PYGZus{}c}\PYG{p}{[}\PYG{l+m+mi}{3}\PYG{p}{])} \PYG{o}{/} \PYG{n}{m}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]} \PYG{o}{*} \PYG{n}{r\PYGZus{}2}
+
+    \PYG{k}{return} \PYG{n}{array}\PYG{p}{([}\PYG{n}{dx\PYGZus{}1\PYGZus{}dt}\PYG{p}{,} \PYG{n}{dv\PYGZus{}1\PYGZus{}dt}\PYG{p}{,} \PYG{n}{dx\PYGZus{}2\PYGZus{}dt}\PYG{p}{,} \PYG{n}{dv\PYGZus{}2\PYGZus{}dt}\PYG{p}{])}
+
+
+\PYG{c+c1}{\PYGZsh{} condiciones iniciales:}
+\PYG{n}{conditions} \PYG{o}{=} \PYG{p}{[}
+    \PYG{p}{\PYGZob{}}
+        \PYG{l+s+s2}{\PYGZdq{}name\PYGZdq{}}\PYG{p}{:} \PYG{l+s+s2}{\PYGZdq{}Mismo deslpazamiento hacia la derecha\PYGZdq{}}\PYG{p}{,}
+        \PYG{l+s+s2}{\PYGZdq{}state0\PYGZdq{}}\PYG{p}{:} \PYG{p}{[}\PYG{l+m+mf}{0.8}\PYG{p}{,} \PYG{l+m+mi}{0}\PYG{p}{,} \PYG{l+m+mf}{0.8}\PYG{p}{,} \PYG{l+m+mi}{0}\PYG{p}{],}
+        \PYG{l+s+s2}{\PYGZdq{}description\PYGZdq{}}\PYG{p}{:} \PYG{l+s+s2}{\PYGZdq{}x\PYGZus{}1(0) = x\PYGZus{}2(0) = 0.8 m, v\PYGZus{}1(0) = v\PYGZus{}2(0) = 0\PYGZdq{}}\PYG{p}{,}
+    \PYG{p}{\PYGZcb{},}
+    \PYG{p}{\PYGZob{}}
+        \PYG{l+s+s2}{\PYGZdq{}name\PYGZdq{}}\PYG{p}{:} \PYG{l+s+s2}{\PYGZdq{}Deslpazamiento en sentidos opuestos\PYGZdq{}}\PYG{p}{,}
+        \PYG{l+s+s2}{\PYGZdq{}state0\PYGZdq{}}\PYG{p}{:} \PYG{p}{[}\PYG{l+m+mf}{0.8}\PYG{p}{,} \PYG{l+m+mi}{0}\PYG{p}{,} \PYG{o}{\PYGZhy{}}\PYG{l+m+mf}{0.8}\PYG{p}{,} \PYG{l+m+mi}{0}\PYG{p}{],}
+        \PYG{l+s+s2}{\PYGZdq{}description\PYGZdq{}}\PYG{p}{:} \PYG{l+s+s2}{\PYGZdq{}x\PYGZus{}1(0) = 0.8 m x\PYGZus{}2(0) = \PYGZhy{}0.8 m, v\PYGZus{}1(0) = v\PYGZus{}2(0) = 0\PYGZdq{}}\PYG{p}{,}
+    \PYG{p}{\PYGZcb{},}
+    \PYG{p}{\PYGZob{}}
+        \PYG{l+s+s2}{\PYGZdq{}name\PYGZdq{}}\PYG{p}{:} \PYG{l+s+s2}{\PYGZdq{}Una en equilibrio, otra desplazada\PYGZdq{}}\PYG{p}{,}
+        \PYG{l+s+s2}{\PYGZdq{}state0\PYGZdq{}}\PYG{p}{:} \PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{l+m+mi}{0}\PYG{p}{,} \PYG{l+m+mf}{1.0}\PYG{p}{,} \PYG{l+m+mi}{0}\PYG{p}{],}
+        \PYG{l+s+s2}{\PYGZdq{}description\PYGZdq{}}\PYG{p}{:} \PYG{l+s+s2}{\PYGZdq{}x\PYGZus{}1(0) =0 m x\PYGZus{}2(0) = \PYGZhy{}1 m, v\PYGZus{}1(0) = v\PYGZus{}2(0) = 0\PYGZdq{}}\PYG{p}{,}
+    \PYG{p}{\PYGZcb{},}
+\PYG{p}{]}
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Simulando cada cosa ...\PYGZdq{}}\PYG{p}{,} \PYG{n}{style}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}blink on blue\PYGZdq{}}\PYG{p}{)}
+
+\PYG{k}{for} \PYG{n}{idx}\PYG{p}{,} \PYG{n}{condition} \PYG{o+ow}{in} \PYG{n+nb}{enumerate}\PYG{p}{(}\PYG{n}{conditions}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{):}
+    \PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{  }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{condition}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}name\PYGZsq{}}\PYG{p}{]}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+    \PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}    Condición: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{condition}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}description\PYGZsq{}}\PYG{p}{]}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} Resolver EDOs}
+    \PYG{n}{solution} \PYG{o}{=} \PYG{n}{odeint}\PYG{p}{(}\PYG{n}{coupled}\PYG{p}{,} \PYG{n}{condition}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}state0\PYGZdq{}}\PYG{p}{],} \PYG{n}{ttime}\PYG{p}{)}
+    \PYG{n}{x1} \PYG{o}{=} \PYG{n}{solution}\PYG{p}{[:,} \PYG{l+m+mi}{0}\PYG{p}{]}
+    \PYG{n}{x2} \PYG{o}{=} \PYG{n}{solution}\PYG{p}{[:,} \PYG{l+m+mi}{2}\PYG{p}{]}
+
+    \PYG{c+c1}{\PYGZsh{} Crear figura}
+    \PYG{n}{fig}\PYG{p}{,} \PYG{p}{(}\PYG{n}{ax1}\PYG{p}{,} \PYG{n}{ax2}\PYG{p}{)} \PYG{o}{=} \PYG{n}{subplots}\PYG{p}{(}\PYG{l+m+mi}{2}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{,} \PYG{n}{figsize}\PYG{o}{=}\PYG{p}{(}\PYG{l+m+mi}{12}\PYG{p}{,} \PYG{l+m+mi}{8}\PYG{p}{))}
+    \PYG{n}{fig}\PYG{o}{.}\PYG{n}{suptitle}\PYG{p}{(}
+        \PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{condition}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}name\PYGZsq{}}\PYG{p}{]}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{condition}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}description\PYGZsq{}}\PYG{p}{]}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,}
+        \PYG{n}{fontsize}\PYG{o}{=}\PYG{l+m+mi}{14}\PYG{p}{,}
+        \PYG{n}{fontweight}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}bold\PYGZdq{}}\PYG{p}{,}
+    \PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} Subplot 1: Posiciones vs tiempo}
+    \PYG{n}{ax1}\PYG{o}{.}\PYG{n}{plot}\PYG{p}{(}\PYG{n}{ttime}\PYG{p}{,} \PYG{n}{x1}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}b\PYGZhy{}\PYGZdq{}}\PYG{p}{,} \PYG{n}{linewidth}\PYG{o}{=}\PYG{l+m+mi}{2}\PYG{p}{,} \PYG{n}{label}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}Masa 1 (x\PYGZus{}1)\PYGZdq{}}\PYG{p}{)}
+    \PYG{n}{ax1}\PYG{o}{.}\PYG{n}{plot}\PYG{p}{(}\PYG{n}{ttime}\PYG{p}{,} \PYG{n}{x2}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}r\PYGZhy{}\PYGZdq{}}\PYG{p}{,} \PYG{n}{linewidth}\PYG{o}{=}\PYG{l+m+mi}{2}\PYG{p}{,} \PYG{n}{label}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}Masa 2 (x\PYGZus{}2)\PYGZdq{}}\PYG{p}{)}
+    \PYG{n}{ax1}\PYG{o}{.}\PYG{n}{axhline}\PYG{p}{(}\PYG{n}{y}\PYG{o}{=}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{n}{color}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}black\PYGZdq{}}\PYG{p}{,} \PYG{n}{linewidth}\PYG{o}{=}\PYG{l+m+mf}{0.8}\PYG{p}{,} \PYG{n}{linestyle}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}\PYGZhy{}\PYGZhy{}\PYGZdq{}}\PYG{p}{,} \PYG{n}{alpha}\PYG{o}{=}\PYG{l+m+mf}{0.5}\PYG{p}{)}
+    \PYG{n}{ax1}\PYG{o}{.}\PYG{n}{set\PYGZus{}xlabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Tiempo (s)\PYGZdq{}}\PYG{p}{,} \PYG{n}{fontsize}\PYG{o}{=}\PYG{l+m+mi}{11}\PYG{p}{)}
+    \PYG{n}{ax1}\PYG{o}{.}\PYG{n}{set\PYGZus{}ylabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Posición (m)\PYGZdq{}}\PYG{p}{,} \PYG{n}{fontsize}\PYG{o}{=}\PYG{l+m+mi}{11}\PYG{p}{)}
+    \PYG{n}{ax1}\PYG{o}{.}\PYG{n}{set\PYGZus{}title}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Posiciones de las masas vs tiempo\PYGZdq{}}\PYG{p}{,} \PYG{n}{fontsize}\PYG{o}{=}\PYG{l+m+mi}{12}\PYG{p}{,} \PYG{n}{fontweight}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}bold\PYGZdq{}}\PYG{p}{)}
+    \PYG{n}{ax1}\PYG{o}{.}\PYG{n}{grid}\PYG{p}{(}\PYG{k+kc}{True}\PYG{p}{,} \PYG{n}{alpha}\PYG{o}{=}\PYG{l+m+mf}{0.3}\PYG{p}{)}
+    \PYG{n}{ax1}\PYG{o}{.}\PYG{n}{legend}\PYG{p}{(}\PYG{n}{fontsize}\PYG{o}{=}\PYG{l+m+mi}{10}\PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} Subplot 2: Espacio de fase (x1 vs x2)}
+    \PYG{n}{ax2}\PYG{o}{.}\PYG{n}{plot}\PYG{p}{(}\PYG{n}{x1}\PYG{p}{,} \PYG{n}{x2}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}g\PYGZhy{}\PYGZdq{}}\PYG{p}{,} \PYG{n}{linewidth}\PYG{o}{=}\PYG{l+m+mi}{2}\PYG{p}{,} \PYG{n}{alpha}\PYG{o}{=}\PYG{l+m+mf}{0.7}\PYG{p}{)}
+    \PYG{n}{ax2}\PYG{o}{.}\PYG{n}{plot}\PYG{p}{(}\PYG{n}{x1}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{],} \PYG{n}{x2}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{],} \PYG{l+s+s2}{\PYGZdq{}go\PYGZdq{}}\PYG{p}{,} \PYG{n}{markersize}\PYG{o}{=}\PYG{l+m+mi}{10}\PYG{p}{,} \PYG{n}{label}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}Inicio\PYGZdq{}}\PYG{p}{)}
+    \PYG{n}{ax2}\PYG{o}{.}\PYG{n}{plot}\PYG{p}{(}\PYG{n}{x1}\PYG{p}{[}\PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{],} \PYG{n}{x2}\PYG{p}{[}\PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{],} \PYG{l+s+s2}{\PYGZdq{}rs\PYGZdq{}}\PYG{p}{,} \PYG{n}{markersize}\PYG{o}{=}\PYG{l+m+mi}{10}\PYG{p}{,} \PYG{n}{label}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}Final\PYGZdq{}}\PYG{p}{)}
+    \PYG{n}{ax2}\PYG{o}{.}\PYG{n}{axhline}\PYG{p}{(}\PYG{n}{y}\PYG{o}{=}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{n}{color}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}black\PYGZdq{}}\PYG{p}{,} \PYG{n}{linewidth}\PYG{o}{=}\PYG{l+m+mf}{0.8}\PYG{p}{,} \PYG{n}{linestyle}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}\PYGZhy{}\PYGZhy{}\PYGZdq{}}\PYG{p}{,} \PYG{n}{alpha}\PYG{o}{=}\PYG{l+m+mf}{0.5}\PYG{p}{)}
+    \PYG{n}{ax2}\PYG{o}{.}\PYG{n}{axvline}\PYG{p}{(}\PYG{n}{x}\PYG{o}{=}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{n}{color}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}black\PYGZdq{}}\PYG{p}{,} \PYG{n}{linewidth}\PYG{o}{=}\PYG{l+m+mf}{0.8}\PYG{p}{,} \PYG{n}{linestyle}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}\PYGZhy{}\PYGZhy{}\PYGZdq{}}\PYG{p}{,} \PYG{n}{alpha}\PYG{o}{=}\PYG{l+m+mf}{0.5}\PYG{p}{)}
+    \PYG{n}{ax2}\PYG{o}{.}\PYG{n}{set\PYGZus{}xlabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Posición masa 1, x\PYGZus{}1 (m)\PYGZdq{}}\PYG{p}{,} \PYG{n}{fontsize}\PYG{o}{=}\PYG{l+m+mi}{11}\PYG{p}{)}
+    \PYG{n}{ax2}\PYG{o}{.}\PYG{n}{set\PYGZus{}ylabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Posición masa 2, x\PYGZus{}2 (m)\PYGZdq{}}\PYG{p}{,} \PYG{n}{fontsize}\PYG{o}{=}\PYG{l+m+mi}{11}\PYG{p}{)}
+    \PYG{n}{ax2}\PYG{o}{.}\PYG{n}{set\PYGZus{}title}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Espacio de configuración (x\PYGZus{}1 vs x\PYGZus{}2)\PYGZdq{}}\PYG{p}{,} \PYG{n}{fontsize}\PYG{o}{=}\PYG{l+m+mi}{12}\PYG{p}{,} \PYG{n}{fontweight}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}bold\PYGZdq{}}\PYG{p}{)}
+    \PYG{n}{ax2}\PYG{o}{.}\PYG{n}{grid}\PYG{p}{(}\PYG{k+kc}{True}\PYG{p}{,} \PYG{n}{alpha}\PYG{o}{=}\PYG{l+m+mf}{0.3}\PYG{p}{)}
+    \PYG{n}{ax2}\PYG{o}{.}\PYG{n}{legend}\PYG{p}{(}\PYG{n}{fontsize}\PYG{o}{=}\PYG{l+m+mi}{10}\PYG{p}{)}
+    \PYG{n}{ax2}\PYG{o}{.}\PYG{n}{axis}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}equal\PYGZdq{}}\PYG{p}{)}
+
+    \PYG{n}{tight\PYGZus{}layout}\PYG{p}{()}
+    \PYG{n}{filename} \PYG{o}{=} \PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{output\PYGZus{}dir}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{/caso\PYGZus{}}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{idx}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZus{}lineal.png\PYGZdq{}}
+    \PYG{n}{savefig}\PYG{p}{(}\PYG{n}{filename}\PYG{p}{,} \PYG{n}{dpi}\PYG{o}{=}\PYG{l+m+mi}{300}\PYG{p}{,} \PYG{n}{bbox\PYGZus{}inches}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}tight\PYGZdq{}}\PYG{p}{)}
+    \PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}    [green] Guardado: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{filename}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{[/green]\PYGZdq{}}\PYG{p}{)}
+    \PYG{n}{show}\PYG{p}{()}
+    \PYG{n}{close}\PYG{p}{(}\PYG{n}{fig}\PYG{p}{)}
+
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{[bold yellow]Consideramos ahora ecuaciones no lineales:[/bold yellow]\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}  F\PYGZus{}1 = \PYGZhy{}k(x\PYGZus{}1 + 0.1x\PYGZus{}1³) \PYGZhy{} k\PYGZsq{}[(x\PYGZus{}1\PYGZhy{}x\PYGZus{}2) + 0.1(x\PYGZus{}1\PYGZhy{}x\PYGZus{}2)³]\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}  F\PYGZus{}2 = \PYGZhy{}k(x\PYGZus{}2 + 0.1x\PYGZus{}2³) \PYGZhy{} k\PYGZsq{}[(x\PYGZus{}2\PYGZhy{}x\PYGZus{}1) + 0.1(x\PYGZus{}2\PYGZhy{}x\PYGZus{}1)³]\PYGZdq{}}\PYG{p}{)}
+
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{[bold]Comparación: Sistema lineal vs no lineal[/bold]\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Resimulando cada cosa ...\PYGZdq{}}\PYG{p}{,} \PYG{n}{style}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}blink on blue\PYGZdq{}}\PYG{p}{)}
+
+\PYG{k}{for} \PYG{n}{idx}\PYG{p}{,} \PYG{n}{condition} \PYG{o+ow}{in} \PYG{n+nb}{enumerate}\PYG{p}{(}\PYG{n}{conditions}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{):}
+    \PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{  }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{condition}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}name\PYGZsq{}}\PYG{p}{]}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} Resolver ambos sistemas}
+    \PYG{n}{sol\PYGZus{}linear} \PYG{o}{=} \PYG{n}{odeint}\PYG{p}{(}\PYG{n}{coupled}\PYG{p}{,} \PYG{n}{condition}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}state0\PYGZdq{}}\PYG{p}{],} \PYG{n}{ttime}\PYG{p}{)}
+    \PYG{n}{sol\PYGZus{}nonlinear} \PYG{o}{=} \PYG{n}{odeint}\PYG{p}{(}\PYG{n}{coupled\PYGZus{}not\PYGZus{}linear}\PYG{p}{,} \PYG{n}{condition}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}state0\PYGZdq{}}\PYG{p}{],} \PYG{n}{ttime}\PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} Crear figura comparativa}
+    \PYG{n}{fig}\PYG{p}{,} \PYG{n}{axes} \PYG{o}{=} \PYG{n}{subplots}\PYG{p}{(}\PYG{l+m+mi}{2}\PYG{p}{,} \PYG{l+m+mi}{2}\PYG{p}{,} \PYG{n}{figsize}\PYG{o}{=}\PYG{p}{(}\PYG{l+m+mi}{14}\PYG{p}{,} \PYG{l+m+mi}{10}\PYG{p}{))}
+    \PYG{n}{fig}\PYG{o}{.}\PYG{n}{suptitle}\PYG{p}{(}
+        \PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Comparación Lineal vs No Lineal}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{condition}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}name\PYGZsq{}}\PYG{p}{]}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,}
+        \PYG{n}{fontsize}\PYG{o}{=}\PYG{l+m+mi}{15}\PYG{p}{,}
+        \PYG{n}{fontweight}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}bold\PYGZdq{}}\PYG{p}{,}
+    \PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} Subplot 1: Masa 1 \PYGZhy{} Lineal vs No lineal}
+    \PYG{n}{axes}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{l+m+mi}{0}\PYG{p}{]}\PYG{o}{.}\PYG{n}{plot}\PYG{p}{(}\PYG{n}{ttime}\PYG{p}{,} \PYG{n}{sol\PYGZus{}linear}\PYG{p}{[:,} \PYG{l+m+mi}{0}\PYG{p}{],} \PYG{l+s+s2}{\PYGZdq{}b\PYGZhy{}\PYGZdq{}}\PYG{p}{,} \PYG{n}{linewidth}\PYG{o}{=}\PYG{l+m+mi}{2}\PYG{p}{,} \PYG{n}{label}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}Lineal\PYGZdq{}}\PYG{p}{)}
+    \PYG{n}{axes}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{l+m+mi}{0}\PYG{p}{]}\PYG{o}{.}\PYG{n}{plot}\PYG{p}{(}\PYG{n}{ttime}\PYG{p}{,} \PYG{n}{sol\PYGZus{}nonlinear}\PYG{p}{[:,} \PYG{l+m+mi}{0}\PYG{p}{],} \PYG{l+s+s2}{\PYGZdq{}r\PYGZhy{}\PYGZhy{}\PYGZdq{}}\PYG{p}{,} \PYG{n}{linewidth}\PYG{o}{=}\PYG{l+m+mi}{2}\PYG{p}{,} \PYG{n}{label}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}No lineal\PYGZdq{}}\PYG{p}{)}
+    \PYG{n}{axes}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{l+m+mi}{0}\PYG{p}{]}\PYG{o}{.}\PYG{n}{axhline}\PYG{p}{(}\PYG{n}{y}\PYG{o}{=}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{n}{color}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}black\PYGZdq{}}\PYG{p}{,} \PYG{n}{linewidth}\PYG{o}{=}\PYG{l+m+mf}{0.8}\PYG{p}{,} \PYG{n}{linestyle}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}\PYGZhy{}\PYGZhy{}\PYGZdq{}}\PYG{p}{,} \PYG{n}{alpha}\PYG{o}{=}\PYG{l+m+mf}{0.5}\PYG{p}{)}
+    \PYG{n}{axes}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{l+m+mi}{0}\PYG{p}{]}\PYG{o}{.}\PYG{n}{set\PYGZus{}xlabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Tiempo (s)\PYGZdq{}}\PYG{p}{,} \PYG{n}{fontsize}\PYG{o}{=}\PYG{l+m+mi}{10}\PYG{p}{)}
+    \PYG{n}{axes}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{l+m+mi}{0}\PYG{p}{]}\PYG{o}{.}\PYG{n}{set\PYGZus{}ylabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Posición x\PYGZus{}1 (m)\PYGZdq{}}\PYG{p}{,} \PYG{n}{fontsize}\PYG{o}{=}\PYG{l+m+mi}{10}\PYG{p}{)}
+    \PYG{n}{axes}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{l+m+mi}{0}\PYG{p}{]}\PYG{o}{.}\PYG{n}{set\PYGZus{}title}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Masa 1\PYGZdq{}}\PYG{p}{,} \PYG{n}{fontsize}\PYG{o}{=}\PYG{l+m+mi}{11}\PYG{p}{,} \PYG{n}{fontweight}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}bold\PYGZdq{}}\PYG{p}{)}
+    \PYG{n}{axes}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{l+m+mi}{0}\PYG{p}{]}\PYG{o}{.}\PYG{n}{grid}\PYG{p}{(}\PYG{k+kc}{True}\PYG{p}{,} \PYG{n}{alpha}\PYG{o}{=}\PYG{l+m+mf}{0.3}\PYG{p}{)}
+    \PYG{n}{axes}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{l+m+mi}{0}\PYG{p}{]}\PYG{o}{.}\PYG{n}{legend}\PYG{p}{(}\PYG{n}{fontsize}\PYG{o}{=}\PYG{l+m+mi}{9}\PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} Subplot 2: Masa 2 \PYGZhy{} Lineal vs No lineal}
+    \PYG{n}{axes}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{]}\PYG{o}{.}\PYG{n}{plot}\PYG{p}{(}\PYG{n}{ttime}\PYG{p}{,} \PYG{n}{sol\PYGZus{}linear}\PYG{p}{[:,} \PYG{l+m+mi}{2}\PYG{p}{],} \PYG{l+s+s2}{\PYGZdq{}b\PYGZhy{}\PYGZdq{}}\PYG{p}{,} \PYG{n}{linewidth}\PYG{o}{=}\PYG{l+m+mi}{2}\PYG{p}{,} \PYG{n}{label}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}Lineal\PYGZdq{}}\PYG{p}{)}
+    \PYG{n}{axes}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{]}\PYG{o}{.}\PYG{n}{plot}\PYG{p}{(}\PYG{n}{ttime}\PYG{p}{,} \PYG{n}{sol\PYGZus{}nonlinear}\PYG{p}{[:,} \PYG{l+m+mi}{2}\PYG{p}{],} \PYG{l+s+s2}{\PYGZdq{}r\PYGZhy{}\PYGZhy{}\PYGZdq{}}\PYG{p}{,} \PYG{n}{linewidth}\PYG{o}{=}\PYG{l+m+mi}{2}\PYG{p}{,} \PYG{n}{label}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}No lineal\PYGZdq{}}\PYG{p}{)}
+    \PYG{n}{axes}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{]}\PYG{o}{.}\PYG{n}{axhline}\PYG{p}{(}\PYG{n}{y}\PYG{o}{=}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{n}{color}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}black\PYGZdq{}}\PYG{p}{,} \PYG{n}{linewidth}\PYG{o}{=}\PYG{l+m+mf}{0.8}\PYG{p}{,} \PYG{n}{linestyle}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}\PYGZhy{}\PYGZhy{}\PYGZdq{}}\PYG{p}{,} \PYG{n}{alpha}\PYG{o}{=}\PYG{l+m+mf}{0.5}\PYG{p}{)}
+    \PYG{n}{axes}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{]}\PYG{o}{.}\PYG{n}{set\PYGZus{}xlabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Tiempo (s)\PYGZdq{}}\PYG{p}{,} \PYG{n}{fontsize}\PYG{o}{=}\PYG{l+m+mi}{10}\PYG{p}{)}
+    \PYG{n}{axes}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{]}\PYG{o}{.}\PYG{n}{set\PYGZus{}ylabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Posición x\PYGZus{}2 (m)\PYGZdq{}}\PYG{p}{,} \PYG{n}{fontsize}\PYG{o}{=}\PYG{l+m+mi}{10}\PYG{p}{)}
+    \PYG{n}{axes}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{]}\PYG{o}{.}\PYG{n}{set\PYGZus{}title}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Masa 2\PYGZdq{}}\PYG{p}{,} \PYG{n}{fontsize}\PYG{o}{=}\PYG{l+m+mi}{11}\PYG{p}{,} \PYG{n}{fontweight}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}bold\PYGZdq{}}\PYG{p}{)}
+    \PYG{n}{axes}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{]}\PYG{o}{.}\PYG{n}{grid}\PYG{p}{(}\PYG{k+kc}{True}\PYG{p}{,} \PYG{n}{alpha}\PYG{o}{=}\PYG{l+m+mf}{0.3}\PYG{p}{)}
+    \PYG{n}{axes}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{]}\PYG{o}{.}\PYG{n}{legend}\PYG{p}{(}\PYG{n}{fontsize}\PYG{o}{=}\PYG{l+m+mi}{9}\PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} Subplot 3: Espacio de fase \PYGZhy{} Lineal}
+    \PYG{n}{axes}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{0}\PYG{p}{]}\PYG{o}{.}\PYG{n}{plot}\PYG{p}{(}\PYG{n}{sol\PYGZus{}linear}\PYG{p}{[:,} \PYG{l+m+mi}{0}\PYG{p}{],} \PYG{n}{sol\PYGZus{}linear}\PYG{p}{[:,} \PYG{l+m+mi}{2}\PYG{p}{],} \PYG{l+s+s2}{\PYGZdq{}b\PYGZhy{}\PYGZdq{}}\PYG{p}{,} \PYG{n}{linewidth}\PYG{o}{=}\PYG{l+m+mi}{2}\PYG{p}{)}
+    \PYG{n}{axes}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{0}\PYG{p}{]}\PYG{o}{.}\PYG{n}{plot}\PYG{p}{(}\PYG{n}{sol\PYGZus{}linear}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{l+m+mi}{0}\PYG{p}{],} \PYG{n}{sol\PYGZus{}linear}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{l+m+mi}{2}\PYG{p}{],} \PYG{l+s+s2}{\PYGZdq{}go\PYGZdq{}}\PYG{p}{,} \PYG{n}{markersize}\PYG{o}{=}\PYG{l+m+mi}{8}\PYG{p}{)}
+    \PYG{n}{axes}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{0}\PYG{p}{]}\PYG{o}{.}\PYG{n}{axhline}\PYG{p}{(}\PYG{n}{y}\PYG{o}{=}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{n}{color}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}black\PYGZdq{}}\PYG{p}{,} \PYG{n}{linewidth}\PYG{o}{=}\PYG{l+m+mf}{0.8}\PYG{p}{,} \PYG{n}{linestyle}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}\PYGZhy{}\PYGZhy{}\PYGZdq{}}\PYG{p}{,} \PYG{n}{alpha}\PYG{o}{=}\PYG{l+m+mf}{0.5}\PYG{p}{)}
+    \PYG{n}{axes}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{0}\PYG{p}{]}\PYG{o}{.}\PYG{n}{axvline}\PYG{p}{(}\PYG{n}{x}\PYG{o}{=}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{n}{color}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}black\PYGZdq{}}\PYG{p}{,} \PYG{n}{linewidth}\PYG{o}{=}\PYG{l+m+mf}{0.8}\PYG{p}{,} \PYG{n}{linestyle}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}\PYGZhy{}\PYGZhy{}\PYGZdq{}}\PYG{p}{,} \PYG{n}{alpha}\PYG{o}{=}\PYG{l+m+mf}{0.5}\PYG{p}{)}
+    \PYG{n}{axes}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{0}\PYG{p}{]}\PYG{o}{.}\PYG{n}{set\PYGZus{}xlabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}x\PYGZus{}1 (m)\PYGZdq{}}\PYG{p}{,} \PYG{n}{fontsize}\PYG{o}{=}\PYG{l+m+mi}{10}\PYG{p}{)}
+    \PYG{n}{axes}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{0}\PYG{p}{]}\PYG{o}{.}\PYG{n}{set\PYGZus{}ylabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}x\PYGZus{}2 (m)\PYGZdq{}}\PYG{p}{,} \PYG{n}{fontsize}\PYG{o}{=}\PYG{l+m+mi}{10}\PYG{p}{)}
+    \PYG{n}{axes}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{0}\PYG{p}{]}\PYG{o}{.}\PYG{n}{set\PYGZus{}title}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Espacio de fase \PYGZhy{} LINEAL\PYGZdq{}}\PYG{p}{,} \PYG{n}{fontsize}\PYG{o}{=}\PYG{l+m+mi}{11}\PYG{p}{,} \PYG{n}{fontweight}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}bold\PYGZdq{}}\PYG{p}{)}
+    \PYG{n}{axes}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{0}\PYG{p}{]}\PYG{o}{.}\PYG{n}{grid}\PYG{p}{(}\PYG{k+kc}{True}\PYG{p}{,} \PYG{n}{alpha}\PYG{o}{=}\PYG{l+m+mf}{0.3}\PYG{p}{)}
+    \PYG{n}{axes}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{0}\PYG{p}{]}\PYG{o}{.}\PYG{n}{axis}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}equal\PYGZdq{}}\PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} Subplot 4: Espacio de fase \PYGZhy{} No lineal}
+    \PYG{n}{axes}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{]}\PYG{o}{.}\PYG{n}{plot}\PYG{p}{(}\PYG{n}{sol\PYGZus{}nonlinear}\PYG{p}{[:,} \PYG{l+m+mi}{0}\PYG{p}{],} \PYG{n}{sol\PYGZus{}nonlinear}\PYG{p}{[:,} \PYG{l+m+mi}{2}\PYG{p}{],} \PYG{l+s+s2}{\PYGZdq{}r\PYGZhy{}\PYGZdq{}}\PYG{p}{,} \PYG{n}{linewidth}\PYG{o}{=}\PYG{l+m+mi}{2}\PYG{p}{)}
+    \PYG{n}{axes}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{]}\PYG{o}{.}\PYG{n}{plot}\PYG{p}{(}\PYG{n}{sol\PYGZus{}nonlinear}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{l+m+mi}{0}\PYG{p}{],} \PYG{n}{sol\PYGZus{}nonlinear}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{l+m+mi}{2}\PYG{p}{],} \PYG{l+s+s2}{\PYGZdq{}go\PYGZdq{}}\PYG{p}{,} \PYG{n}{markersize}\PYG{o}{=}\PYG{l+m+mi}{8}\PYG{p}{)}
+    \PYG{n}{axes}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{]}\PYG{o}{.}\PYG{n}{axhline}\PYG{p}{(}\PYG{n}{y}\PYG{o}{=}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{n}{color}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}black\PYGZdq{}}\PYG{p}{,} \PYG{n}{linewidth}\PYG{o}{=}\PYG{l+m+mf}{0.8}\PYG{p}{,} \PYG{n}{linestyle}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}\PYGZhy{}\PYGZhy{}\PYGZdq{}}\PYG{p}{,} \PYG{n}{alpha}\PYG{o}{=}\PYG{l+m+mf}{0.5}\PYG{p}{)}
+    \PYG{n}{axes}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{]}\PYG{o}{.}\PYG{n}{axvline}\PYG{p}{(}\PYG{n}{x}\PYG{o}{=}\PYG{l+m+mi}{0}\PYG{p}{,} \PYG{n}{color}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}black\PYGZdq{}}\PYG{p}{,} \PYG{n}{linewidth}\PYG{o}{=}\PYG{l+m+mf}{0.8}\PYG{p}{,} \PYG{n}{linestyle}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}\PYGZhy{}\PYGZhy{}\PYGZdq{}}\PYG{p}{,} \PYG{n}{alpha}\PYG{o}{=}\PYG{l+m+mf}{0.5}\PYG{p}{)}
+    \PYG{n}{axes}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{]}\PYG{o}{.}\PYG{n}{set\PYGZus{}xlabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}x\PYGZus{}1 (m)\PYGZdq{}}\PYG{p}{,} \PYG{n}{fontsize}\PYG{o}{=}\PYG{l+m+mi}{10}\PYG{p}{)}
+    \PYG{n}{axes}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{]}\PYG{o}{.}\PYG{n}{set\PYGZus{}ylabel}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}x\PYGZus{}2 (m)\PYGZdq{}}\PYG{p}{,} \PYG{n}{fontsize}\PYG{o}{=}\PYG{l+m+mi}{10}\PYG{p}{)}
+    \PYG{n}{axes}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{]}\PYG{o}{.}\PYG{n}{set\PYGZus{}title}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Espacio de fase \PYGZhy{} NO LINEAL\PYGZdq{}}\PYG{p}{,} \PYG{n}{fontsize}\PYG{o}{=}\PYG{l+m+mi}{11}\PYG{p}{,} \PYG{n}{fontweight}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}bold\PYGZdq{}}\PYG{p}{)}
+    \PYG{n}{axes}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{]}\PYG{o}{.}\PYG{n}{grid}\PYG{p}{(}\PYG{k+kc}{True}\PYG{p}{,} \PYG{n}{alpha}\PYG{o}{=}\PYG{l+m+mf}{0.3}\PYG{p}{)}
+    \PYG{n}{axes}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{]}\PYG{o}{.}\PYG{n}{axis}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}equal\PYGZdq{}}\PYG{p}{)}
+
+    \PYG{n}{tight\PYGZus{}layout}\PYG{p}{()}
+    \PYG{n}{filename} \PYG{o}{=} \PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{output\PYGZus{}dir}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{/caso\PYGZus{}}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{idx}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZus{}comparacion.png\PYGZdq{}}
+    \PYG{n}{savefig}\PYG{p}{(}\PYG{n}{filename}\PYG{p}{,} \PYG{n}{dpi}\PYG{o}{=}\PYG{l+m+mi}{300}\PYG{p}{,} \PYG{n}{bbox\PYGZus{}inches}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}tight\PYGZdq{}}\PYG{p}{)}
+    \PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}    [green] Guardado: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{filename}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{[/green]\PYGZdq{}}\PYG{p}{)}
+    \PYG{n}{show}\PYG{p}{()}
+    \PYG{n}{close}\PYG{p}{(}\PYG{n}{fig}\PYG{p}{)}
+
+\PYG{c+c1}{\PYGZsh{} Por ultimo calculamos los modos normales de vibración para ambos casos:}
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{\PYGZdq{}} \PYG{o}{+} \PYG{l+s+s2}{\PYGZdq{}=\PYGZdq{}} \PYG{o}{*} \PYG{l+m+mi}{70}\PYG{p}{,} \PYG{n}{style}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}bold cyan\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}
+    \PYG{l+s+s2}{\PYGZdq{} ANÁLISIS SIMPLE: MODOS NORMALES (LINEAL VS NO LINEAL)\PYGZdq{}}\PYG{p}{,} \PYG{n}{style}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}bold cyan\PYGZdq{}}
+\PYG{p}{)}
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}=\PYGZdq{}} \PYG{o}{*} \PYG{l+m+mi}{70}\PYG{p}{,} \PYG{n}{style}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}bold cyan\PYGZdq{}}\PYG{p}{)}
+
+\PYG{c+c1}{\PYGZsh{} MODOS NORMALES TEÓRICOS (LINEAL)}
+
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{\PYGZdq{}} \PYG{o}{+} \PYG{l+s+s2}{\PYGZdq{}=\PYGZdq{}} \PYG{o}{*} \PYG{l+m+mi}{70}\PYG{p}{,} \PYG{n}{style}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}bold yellow\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{} MODOS NORMALES TEÓRICOS (SISTEMA LINEAL)\PYGZdq{}}\PYG{p}{,} \PYG{n}{style}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}bold yellow\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}=\PYGZdq{}} \PYG{o}{*} \PYG{l+m+mi}{70}\PYG{p}{,} \PYG{n}{style}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}bold yellow\PYGZdq{}}\PYG{p}{)}
+
+\PYG{c+c1}{\PYGZsh{} Matriz del sistema}
+\PYG{n}{A} \PYG{o}{=} \PYG{n}{array}\PYG{p}{(}
+    \PYG{p}{[[}\PYG{o}{\PYGZhy{}}\PYG{p}{(}\PYG{n}{k}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]} \PYG{o}{+} \PYG{n}{k\PYGZus{}c}\PYG{p}{[}\PYG{l+m+mi}{3}\PYG{p}{])} \PYG{o}{/} \PYG{n}{m}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{],} \PYG{n}{k\PYGZus{}c}\PYG{p}{[}\PYG{l+m+mi}{3}\PYG{p}{]} \PYG{o}{/} \PYG{n}{m}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]],} \PYG{p}{[}\PYG{n}{k\PYGZus{}c}\PYG{p}{[}\PYG{l+m+mi}{3}\PYG{p}{]} \PYG{o}{/} \PYG{n}{m}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{],} \PYG{o}{\PYGZhy{}}\PYG{p}{(}\PYG{n}{k}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]} \PYG{o}{+} \PYG{n}{k\PYGZus{}c}\PYG{p}{[}\PYG{l+m+mi}{3}\PYG{p}{])} \PYG{o}{/} \PYG{n}{m}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]]]}
+\PYG{p}{)}
+
+\PYG{n}{eigenvalues}\PYG{p}{,} \PYG{n}{eigenvectors} \PYG{o}{=} \PYG{n}{linalg}\PYG{o}{.}\PYG{n}{eig}\PYG{p}{(}\PYG{n}{A}\PYG{p}{)}
+\PYG{n}{omega\PYGZus{}teorico} \PYG{o}{=} \PYG{n}{sqrt}\PYG{p}{(}\PYG{o}{\PYGZhy{}}\PYG{n}{eigenvalues}\PYG{p}{)}
+\PYG{n}{freq\PYGZus{}teorico} \PYG{o}{=} \PYG{n}{omega\PYGZus{}teorico} \PYG{o}{/} \PYG{p}{(}\PYG{l+m+mi}{2} \PYG{o}{*} \PYG{n}{pi}\PYG{p}{)}
+\PYG{n}{periodo\PYGZus{}teorico} \PYG{o}{=} \PYG{l+m+mi}{1} \PYG{o}{/} \PYG{n}{freq\PYGZus{}teorico}
+
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{[bold]Modo 1 (Simétrico):[/bold]\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}  w\PYGZus{}1 = }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{omega\PYGZus{}teorico}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]}\PYG{l+s+si}{:}\PYG{l+s+s2}{.4f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ rad/s\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}  f\PYGZus{}1 = }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{freq\PYGZus{}teorico}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]}\PYG{l+s+si}{:}\PYG{l+s+s2}{.4f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ Hz\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}  T\PYGZus{}1 = }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{periodo\PYGZus{}teorico}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]}\PYG{l+s+si}{:}\PYG{l+s+s2}{.4f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ s\PYGZdq{}}\PYG{p}{)}
+
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{[bold]Modo 2 (Antisimétrico):[/bold]\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}  w\PYGZus{}2 = }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{omega\PYGZus{}teorico}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]}\PYG{l+s+si}{:}\PYG{l+s+s2}{.4f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ rad/s\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}  f\PYGZus{}2 = }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{freq\PYGZus{}teorico}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]}\PYG{l+s+si}{:}\PYG{l+s+s2}{.4f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ Hz\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}  T\PYGZus{}2 = }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{periodo\PYGZus{}teorico}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]}\PYG{l+s+si}{:}\PYG{l+s+s2}{.4f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ s\PYGZdq{}}\PYG{p}{)}
+
+\PYG{c+c1}{\PYGZsh{} ANÁLISIS PARA DIFERENTES AMPLITUDES}
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{\PYGZdq{}} \PYG{o}{+} \PYG{l+s+s2}{\PYGZdq{}=\PYGZdq{}} \PYG{o}{*} \PYG{l+m+mi}{70}\PYG{p}{,} \PYG{n}{style}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}bold green\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{} ANÁLISIS NUMÉRICO: DEPENDENCIA CON AMPLITUD\PYGZdq{}}\PYG{p}{,} \PYG{n}{style}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}bold green\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}=\PYGZdq{}} \PYG{o}{*} \PYG{l+m+mi}{70}\PYG{p}{,} \PYG{n}{style}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}bold green\PYGZdq{}}\PYG{p}{)}
+
+\PYG{n}{amplitudes} \PYG{o}{=} \PYG{p}{[}\PYG{l+m+mf}{0.2}\PYG{p}{,} \PYG{l+m+mf}{0.5}\PYG{p}{,} \PYG{l+m+mf}{0.8}\PYG{p}{,} \PYG{l+m+mf}{1.2}\PYG{p}{]}
+
+\PYG{c+c1}{\PYGZsh{} Almacenar resultados}
+\PYG{n}{resultados} \PYG{o}{=} \PYG{p}{\PYGZob{}}
+    \PYG{l+s+s2}{\PYGZdq{}amplitud\PYGZdq{}}\PYG{p}{:} \PYG{p}{[],}
+    \PYG{l+s+s2}{\PYGZdq{}T\PYGZus{}lineal\PYGZdq{}}\PYG{p}{:} \PYG{p}{[],}
+    \PYG{l+s+s2}{\PYGZdq{}T\PYGZus{}nonlinear\PYGZdq{}}\PYG{p}{:} \PYG{p}{[],}
+    \PYG{l+s+s2}{\PYGZdq{}f\PYGZus{}lineal\PYGZdq{}}\PYG{p}{:} \PYG{p}{[],}
+    \PYG{l+s+s2}{\PYGZdq{}f\PYGZus{}nonlinear\PYGZdq{}}\PYG{p}{:} \PYG{p}{[],}
+    \PYG{l+s+s2}{\PYGZdq{}diff\PYGZus{}pct\PYGZdq{}}\PYG{p}{:} \PYG{p}{[],}
+\PYG{p}{\PYGZcb{}}
+
+\PYG{k}{for} \PYG{n}{amp} \PYG{o+ow}{in} \PYG{n}{amplitudes}\PYG{p}{:}
+    \PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{[bold cyan]Amplitud: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{amp}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ m[/bold cyan]\PYGZdq{}}\PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} Condición inicial: modo simétrico}
+    \PYG{n}{state0} \PYG{o}{=} \PYG{p}{[}\PYG{n}{amp}\PYG{p}{,} \PYG{l+m+mf}{0.0}\PYG{p}{,} \PYG{n}{amp}\PYG{p}{,} \PYG{l+m+mf}{0.0}\PYG{p}{]}
+
+    \PYG{c+c1}{\PYGZsh{} Resolver}
+    \PYG{n}{sol\PYGZus{}lin} \PYG{o}{=} \PYG{n}{odeint}\PYG{p}{(}\PYG{n}{coupled}\PYG{p}{,} \PYG{n}{state0}\PYG{p}{,} \PYG{n}{ttime}\PYG{p}{)}
+    \PYG{n}{sol\PYGZus{}nonlin} \PYG{o}{=} \PYG{n}{odeint}\PYG{p}{(}\PYG{n}{coupled\PYGZus{}not\PYGZus{}linear}\PYG{p}{,} \PYG{n}{state0}\PYG{p}{,} \PYG{n}{ttime}\PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} Calcular periodos}
+    \PYG{n}{T\PYGZus{}lin} \PYG{o}{=} \PYG{n}{calcular\PYGZus{}periodo}\PYG{p}{(}\PYG{n}{ttime}\PYG{p}{,} \PYG{n}{sol\PYGZus{}lin}\PYG{p}{[:,} \PYG{l+m+mi}{0}\PYG{p}{])}
+    \PYG{n}{T\PYGZus{}nonlin} \PYG{o}{=} \PYG{n}{calcular\PYGZus{}periodo}\PYG{p}{(}\PYG{n}{ttime}\PYG{p}{,} \PYG{n}{sol\PYGZus{}nonlin}\PYG{p}{[:,} \PYG{l+m+mi}{0}\PYG{p}{])}
+
+    \PYG{k}{if} \PYG{n}{T\PYGZus{}lin} \PYG{o+ow}{and} \PYG{n}{T\PYGZus{}nonlin}\PYG{p}{:}
+        \PYG{n}{f\PYGZus{}lin} \PYG{o}{=} \PYG{l+m+mi}{1} \PYG{o}{/} \PYG{n}{T\PYGZus{}lin}
+        \PYG{n}{f\PYGZus{}nonlin} \PYG{o}{=} \PYG{l+m+mi}{1} \PYG{o}{/} \PYG{n}{T\PYGZus{}nonlin}
+        \PYG{n}{diff} \PYG{o}{=} \PYG{n+nb}{abs}\PYG{p}{(}\PYG{n}{f\PYGZus{}nonlin} \PYG{o}{\PYGZhy{}} \PYG{n}{f\PYGZus{}lin}\PYG{p}{)} \PYG{o}{/} \PYG{n}{f\PYGZus{}lin} \PYG{o}{*} \PYG{l+m+mi}{100}
+
+        \PYG{n}{resultados}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}amplitud\PYGZdq{}}\PYG{p}{]}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{n}{amp}\PYG{p}{)}
+        \PYG{n}{resultados}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}T\PYGZus{}lineal\PYGZdq{}}\PYG{p}{]}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{n}{T\PYGZus{}lin}\PYG{p}{)}
+        \PYG{n}{resultados}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}T\PYGZus{}nonlinear\PYGZdq{}}\PYG{p}{]}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{n}{T\PYGZus{}nonlin}\PYG{p}{)}
+        \PYG{n}{resultados}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}f\PYGZus{}lineal\PYGZdq{}}\PYG{p}{]}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{n}{f\PYGZus{}lin}\PYG{p}{)}
+        \PYG{n}{resultados}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}f\PYGZus{}nonlinear\PYGZdq{}}\PYG{p}{]}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{n}{f\PYGZus{}nonlin}\PYG{p}{)}
+        \PYG{n}{resultados}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}diff\PYGZus{}pct\PYGZdq{}}\PYG{p}{]}\PYG{o}{.}\PYG{n}{append}\PYG{p}{(}\PYG{n}{diff}\PYG{p}{)}
+
+        \PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}  Lineal:    T = }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{T\PYGZus{}lin}\PYG{l+s+si}{:}\PYG{l+s+s2}{.4f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ s,  f = }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{f\PYGZus{}lin}\PYG{l+s+si}{:}\PYG{l+s+s2}{.4f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ Hz\PYGZdq{}}\PYG{p}{)}
+        \PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}  No lineal: T = }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{T\PYGZus{}nonlin}\PYG{l+s+si}{:}\PYG{l+s+s2}{.4f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ s,  f = }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{f\PYGZus{}nonlin}\PYG{l+s+si}{:}\PYG{l+s+s2}{.4f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{ Hz\PYGZdq{}}\PYG{p}{)}
+        \PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}  Diferencia: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{diff}\PYG{l+s+si}{:}\PYG{l+s+s2}{.2f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZpc{}\PYGZdq{}}\PYG{p}{)}
+
+\PYG{c+c1}{\PYGZsh{} TABLA COMPARATIVA}
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{\PYGZdq{}} \PYG{o}{+} \PYG{l+s+s2}{\PYGZdq{}=\PYGZdq{}} \PYG{o}{*} \PYG{l+m+mi}{70}\PYG{p}{,} \PYG{n}{style}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}bold magenta\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{} TABLA COMPARATIVA\PYGZdq{}}\PYG{p}{,} \PYG{n}{style}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}bold magenta\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}=\PYGZdq{}} \PYG{o}{*} \PYG{l+m+mi}{70}\PYG{p}{,} \PYG{n}{style}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}bold magenta\PYGZdq{}}\PYG{p}{)}
+
+\PYG{n}{table} \PYG{o}{=} \PYG{n}{Table}\PYG{p}{(}\PYG{n}{title}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}Frecuencias vs Amplitud\PYGZdq{}}\PYG{p}{,} \PYG{n}{style}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}red\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{table}\PYG{o}{.}\PYG{n}{add\PYGZus{}column}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Amplitud (m)\PYGZdq{}}\PYG{p}{,} \PYG{n}{justify}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}center\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{table}\PYG{o}{.}\PYG{n}{add\PYGZus{}column}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}f Lineal (Hz)\PYGZdq{}}\PYG{p}{,} \PYG{n}{justify}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}center\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{table}\PYG{o}{.}\PYG{n}{add\PYGZus{}column}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}f No Lineal (Hz)\PYGZdq{}}\PYG{p}{,} \PYG{n}{justify}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}center\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{table}\PYG{o}{.}\PYG{n}{add\PYGZus{}column}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}Diferencia (\PYGZpc{})\PYGZdq{}}\PYG{p}{,} \PYG{n}{justify}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}center\PYGZdq{}}\PYG{p}{)}
+
+\PYG{k}{for} \PYG{n}{i} \PYG{o+ow}{in} \PYG{n+nb}{range}\PYG{p}{(}\PYG{n+nb}{len}\PYG{p}{(}\PYG{n}{resultados}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}amplitud\PYGZdq{}}\PYG{p}{])):}
+    \PYG{n}{table}\PYG{o}{.}\PYG{n}{add\PYGZus{}row}\PYG{p}{(}
+        \PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{resultados}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}amplitud\PYGZsq{}}\PYG{p}{][}\PYG{n}{i}\PYG{p}{]}\PYG{l+s+si}{:}\PYG{l+s+s2}{.1f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,}
+        \PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{resultados}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}f\PYGZus{}lineal\PYGZsq{}}\PYG{p}{][}\PYG{n}{i}\PYG{p}{]}\PYG{l+s+si}{:}\PYG{l+s+s2}{.4f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,}
+        \PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{resultados}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}f\PYGZus{}nonlinear\PYGZsq{}}\PYG{p}{][}\PYG{n}{i}\PYG{p}{]}\PYG{l+s+si}{:}\PYG{l+s+s2}{.4f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,}
+        \PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{resultados}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}diff\PYGZus{}pct\PYGZsq{}}\PYG{p}{][}\PYG{n}{i}\PYG{p}{]}\PYG{l+s+si}{:}\PYG{l+s+s2}{.2f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,}
+    \PYG{p}{)}
+
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{n}{table}\PYG{p}{)}
+
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{\PYGZdq{}} \PYG{o}{+} \PYG{l+s+s2}{\PYGZdq{}=\PYGZdq{}} \PYG{o}{*} \PYG{l+m+mi}{70}\PYG{p}{,} \PYG{n}{style}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}bold green\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{} RESUMEN DE RESULTADOS\PYGZdq{}}\PYG{p}{,} \PYG{n}{style}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}bold green\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}=\PYGZdq{}} \PYG{o}{*} \PYG{l+m+mi}{70}\PYG{p}{,} \PYG{n}{style}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}bold green\PYGZdq{}}\PYG{p}{)}
+
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{[bold]Diferencias entre sistema lineal y no lineal:[/bold]\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}  • Sistema lineal: Oscilaciones armónicas puras (sinusoidales)\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}  • Sistema no lineal: Distorsión de la forma de onda\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}  • No linealidad introduce dependencia de amplitud en frecuencia\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}  • Espacio de fase no lineal muestra trayectorias distorsionadas\PYGZdq{}}\PYG{p}{)}
+
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{[bold cyan] Archivos generados en \PYGZsq{}}\PYG{l+s+si}{\PYGZob{}}\PYG{n}{output\PYGZus{}dir}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{/\PYGZsq{}:[/bold cyan]\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}  • caso\PYGZus{}1\PYGZus{}lineal.png \PYGZhy{} Ambas masas a la derecha (lineal)\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}  • caso\PYGZus{}2\PYGZus{}lineal.png \PYGZhy{} Masas en sentidos opuestos (lineal)\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}  • caso\PYGZus{}3\PYGZus{}lineal.png \PYGZhy{} Una en equilibrio (lineal)\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}  • caso\PYGZus{}1\PYGZus{}comparacion.png \PYGZhy{} Comparación lineal vs no lineal\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}  • caso\PYGZus{}2\PYGZus{}comparacion.png \PYGZhy{} Comparación lineal vs no lineal\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}  • caso\PYGZus{}3\PYGZus{}comparacion.png \PYGZhy{} Comparación lineal vs no lineal\PYGZdq{}}\PYG{p}{)}
+
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{\PYGZdq{}} \PYG{o}{+} \PYG{l+s+s2}{\PYGZdq{}=\PYGZdq{}} \PYG{o}{*} \PYG{l+m+mi}{70}\PYG{p}{,} \PYG{n}{style}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}bold green\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{} PROCESO COMPLETADO\PYGZdq{}}\PYG{p}{,} \PYG{n}{style}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}bold green\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{console}\PYG{o}{.}\PYG{n}{print}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}=\PYGZdq{}} \PYG{o}{*} \PYG{l+m+mi}{70} \PYG{o}{+} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+se}{\PYGZbs{}n}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{n}{style}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}bold green\PYGZdq{}}\PYG{p}{)}
+
+\end{MintedVerbatim}

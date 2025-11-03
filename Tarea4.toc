@@ -1,8 +1,10 @@
 \babel@toc {spanish}{}\relax 
 \contentsline {section}{\numberline {1}Lanzamiento del martillo}{1}{section.1}%
 \contentsline {section}{\numberline {2}Oscilador armónico acoplado}{4}{section.2}%
-\contentsline {section}{\numberline {3}Vibración de una cuerda}{4}{section.3}%
-\contentsline {section}{\numberline {A}Código para el lanzamiento del martillo}{5}{appendix.Alph1}%
-\contentsline {section}{\numberline {B}Código para el oscilador acoplado}{10}{appendix.Alph2}%
-\contentsline {section}{\numberline {C}Código para la vibración de una cuerda}{10}{appendix.Alph3}%
-\contentsline {section}{\numberline {D}Consideraciones a futuro}{10}{appendix.Alph4}%
+\contentsline {section}{\numberline {3}Vibración de una cuerda}{8}{section.3}%
+\contentsline {paragraph}{Inicialización (primer paso)}{11}{section*.6}%
+\contentsline {paragraph}{Interpretación física:}{11}{section*.7}%
+\contentsline {paragraph}{En términos de \(c_0\):}{12}{section*.8}%
+\contentsline {section}{\numberline {A}Código para el lanzamiento del martillo}{12}{appendix.Alph1}%
+\contentsline {section}{\numberline {B}Código para el oscilador acoplado}{17}{appendix.Alph2}%
+\contentsline {section}{\numberline {C}Código para la vibración de una cuerda}{22}{appendix.Alph3}%
