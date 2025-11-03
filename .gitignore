@@ -1,0 +1,33 @@
+# Archivos auxiliares de LaTeX
+*.aux
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.nav
+*.snm
+*.synctex.gz
+*.fdb_latexmk
+*.fls
+*.bbl
+*.blg
+*.ilg
+*.idx
+*.ind
+
+# Listados de minted
+*.listing
+_minted/
+
+# Archivos PDF (descomentar si no deseas subirlos)
+# *.pdf
+
+# Directorios de compilación
+build/
+aux/
+
+# Archivos temporales e IDE
+.vscode/
+*.gz
+*.tmp
