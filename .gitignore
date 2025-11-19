@@ -21,7 +21,7 @@
 _minted/
 
 # Archivos PDF (descomentar si no deseas subirlos)
-# *.pdf
+*.pdf
 
 # Directorios de compilación
 build/
