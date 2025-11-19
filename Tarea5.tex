@@ -175,6 +175,9 @@ Para este punto nos dan los siguientes datos experimentales dados en la siguient
 Lo que buscaremos hacer será lo siguiente:
 \begin{enumerate}[a)]
     \item Escribir una función en Python que realice un ajuste a un polinomio segun Lagrange y su algoritmo, para un conjunto de $n$ puntos.
+    Recuerde que para \(\{(x_i,y_i)\}_{i=1}^n\), el polinimio de Lagrange se escribe como:
+    \[ P_{n-1}(x)=\sum_{j=1}^{n} y_j\,\ell_j(x),\qquad
+    \ell_j(x)=\prod_{\substack{m=1\\ m\neq j}}^{n}\frac{x-x_m}{x_j-x_m}.    \]
     \item Utilizar la función creada anteriormente para ajustar a un polinomio los datos experimentale dados en la tabla \ref{tab:Breit-Wigner-data} y graficarlo en pasos de $5 \text{MeV}$. 
     \item Escribir una función en Python que realice una aproximación para estimar la energia de resonancia $E_r$ y el ancho de la mitad del máximo (\textit{full-width at half-maximum}) \(\Gamma\) y los compararemos con el valor teorico dado \(\left(E_r,\Gamma\right)=(78\text{ MeV}, 55\text{ MeV})\).
     \item Escribir una función en Python que realice un ajuste por Splines cubicos para una conjuntos de $n$ datos dados, posteriormente realizaremos los mismos calculos mencionandos en el punto anterior.
@@ -185,6 +188,51 @@ Lo que buscaremos hacer será lo siguiente:
     donde $f_r$, $E_r$ y $\Gamma$ son parámetros a determinar mediante el ajuste, minimizando la función $\chi^2$.
     \item Al minimizar $\chi^2$ se obtienen ecuaciones que no son lineales, por lo que escribimos un programa que utilice el método de Newton-Raphson multidimensional para encontrar sus raíces.
 \end{enumerate}
+\subsection{Resultados de Breit-Wigner}
+Para la primera parte, usando la interpolación de Lagrange nos queda el siguiente gráfico:
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{img/tarea5/interpolacion_lagrange.png}
+    \caption{Interpolación de Lagrange para los datos de Breit-Wigner.}
+    \label{fig:lagrange-breit-wigner}
+\end{figure} 
+Por otra parte, usando splines cúbicos nos queda el siguiente gráfico:
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{img/tarea5/interpolacion_spline_cubico.png}
+    \caption{Interpolación por splines cúbicos para los datos de Breit-Wigner.}
+    \label{fig:spline-cubico-breit-wigner}
+\end{figure} 
+Para los calculos para $E_r$ y $\Gamma$ los resumimos en la siguiente tabla:
+\begin{table}
+    \centering
+    \begin{tabular}{|c|cccc|}
+    \hline
+    \multicolumn{ 5}{|c|}{Lagrange} \\
+    \hline
+     Parametro & Experimental &    Teorico & Error absoluto & Error relativo \\
+     \hline
+     $E_r$ (MeV) &      74.59 &         78 &       3.41 &       4.37\% \\
+     $\Gamma$ (MeV)   &      57.69 &         55 &       2.69 &       4.89\% \\
+     \hline
+     \multicolumn{ 5}{|c|}{Splines cúbicos} \\
+     \hline
+     Parametro & Experimental &    Teorico & Error absoluto & Error relativo \\
+     \hline
+      $E_r$ (MeV) &      76.19 &         78 &       1.81 &       2.32 \%\\
+     $\Gamma$ (MeV)   &       58.4 &         55 &        3.4 &       6.18 \%\\
+    \hline
+    \multicolumn{ 5}{|c|}{Ajuste minimizando $\chi^2$} \\
+     \hline
+     Parametro & Experimental &    Teorico & Error absoluto & Error relativo \\
+     \hline
+      $E_r$ (MeV) &      75.0 &         78 &       3.0 &       3.85 \%\\
+     $\Gamma$ (MeV)   &       50.0 &         55 &        5.0 &       9.09 \%\\
+    \hline
+    \end{tabular}  
+    \caption{Resumen de los calculos para $E_r$ y $\Gamma$}
+    \label{tab:resumen-breit.wigner}
+\end{table}
 \section{Ajuste para un circuito RLC}
 \section{¿Es realmente un cuerpo negro?}
 
