@@ -204,7 +204,7 @@ Por otra parte, usando splines cúbicos nos queda el siguiente gráfico:
     \label{fig:spline-cubico-breit-wigner}
 \end{figure} 
 Para los calculos para $E_r$ y $\Gamma$ los resumimos en la siguiente tabla:
-\begin{table}
+\begin{table}[H]
     \centering
     \begin{tabular}{|c|cccc|}
     \hline
@@ -233,8 +233,1441 @@ Para los calculos para $E_r$ y $\Gamma$ los resumimos en la siguiente tabla:
     \caption{Resumen de los calculos para $E_r$ y $\Gamma$}
     \label{tab:resumen-breit.wigner}
 \end{table}
+El código donde se realizan los calculos y las funciones solicitadas se anexará en el apendice.
 \section{Ajuste para un circuito RLC}
+Sabemos que cuando una fuente de voltaje se conecta a través de una resistencia y un inductor en serie, el voltaje a través del inductor $V_i (t)$ obedece la ecuación
+\[
+V(t) = V_0e^{-\Gamma t}
+\]
+donde t es el tiempo y $\Gamma=\frac{R}{L}$ es el cociente de la resistencia R y la
+inductacia L del circuito. Al realizar un experimento obtenemos los siguientes datos:
+\begin{table}[H]
+    \centering
+    \begin{tabular}{|c|c|c|}
+        \hline
+        time (ns)& voltage (V)& uncertainty (V)\\
+        \hline
+        0	&5.08&	1.12E-01\\
+        32.8&	3.29&	9.04E-02\\
+        65.6&	2.23&	7.43E-02\\
+        98.4&	1.48&	6.05E-02\\
+        131.2&	1.11&	5.25E-02\\
+        164	&6.44E-01&	4.00E-02\\
+        196.8&	4.76E-01&	3.43E-02\\
+        229.6&	2.73E-01&	2.60E-02\\
+        262.4&	1.88E-01&	2.16E-02\\
+        295.2&	1.41E-01&	1.87E-02\\
+        328&	9.42E-02&	1.53E-02\\
+        360.8&	7.68E-02&	1.38E-02\\
+        393.6&	3.22E-02&	8.94E-03\\
+        426.4&	3.22E-02&	8.94E-03\\
+        459.2&	1.98E-02&	7.01E-03\\
+        492&	1.98E-02&	7.01E-03\\
+        \hline
+    \end{tabular}
+    \caption{Datos experimentales para un circuito RLC.}
+    \label{tab:RLC-experimental-data}
+\end{table}
+Buscamos realizar un ajuste por minimos cuadrados a una recta, como en la actividad vista en clase. Para ello de la ecuacion que describe el voltaje tenemos que:
+\begin{align*}
+V(t) &= V_0e^{-\Gamma t}\\
+\ln{V(t)}&=\ln{V_0e^{-\Gamma t}}\\
+\ln{V(t)}&=\ln{V_0}-\Gamma t
+\end{align*}
+Lo cual tiene cara de una linea recta, si tomamos: $y=\ln{V}$, $b=\ln{V_0}$, $x=t$ y $m=-\Gamma$ ($y=mx+b$), lo que nos deja los siguientes gráficos:
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{img/tarea5/grafico_de_dispersion_RLC.png}
+    \caption{Gráfico de dipersión para los datos experimentales}
+    \label{fig:disp-RLC-data}
+    \includegraphics[width=0.8\textwidth]{img/tarea5/grafico_semilog_RLC.png}
+    \caption{Gráfico del ajuste realizado a una escala log}
+    \label{fig:disp--RLC-data}
+\end{figure}
+Dejandonos así los siguientes resultados: $V_0=5.002V$ con un $\Gamma=0.012ms^{-1}$
 \section{¿Es realmente un cuerpo negro?}
 
+\appendix
+\section{Interpolaciones}
+\begin{python}[Tarea 5: Interpolaciones: lagrange, splines cúbicos](style=one-dark){colback=gray!40!black,colframe=blue}
+"""
+Programa: interpolación de lagrange
+Typed: 04/11/2002
+By: Oscar en un día aburrido de SS
+Que vamos a hacer?
+- Escribir un programa que ajuste un polinomio según el algortimo
+de Lagrange, puede utilizar las bibliotecas de Python, a un conjunto de n puntos.
+"""
 
+import os  # para guardar las imagenes
+from scipy.interpolate import CubicSpline
+import matplotlib.pyplot as plt
+import numpy as np  # numpy
+from numpy.polynomial import Polynomial  # numpy
+from rich.console import Console  # Hay que darle formato a la consola
+from rich.table import Table  # Hay que darle formato a la consola
+from rich.panel import Panel  # Hay que darle formato a la consola
+from scipy.optimize import brentq
+from rich import box
+
+output_dir = "resultados_tarea_5"
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
+console = Console()  # Para que se vea bonito
+
+
+def lagrange_interpolation(x_data, y_data):
+    """
+    Realiza la interpolación de Lagrange dados n puntos.
+
+    Parámetros:
+    -----------
+    x_data : array-like
+        Coordenadas x de los puntos
+    y_data : array-like
+        Coordenadas y de los puntos
+
+    Retorna:
+    --------
+    poly : Polynomial
+        Polinomio interpolador de Lagrange
+    """
+    n = len(x_data)
+    x_data = np.array(x_data, dtype=float)
+    y_data = np.array(y_data, dtype=float)
+
+    # Inicializar el polinomio total en cero
+    poly_total = Polynomial([0.0])
+
+    # Construir el polinomio de Lagrange
+    # P(x) = sum y_i · L_i(x)
+    # donde L_i(x) = prod[(x - x_j) / (x_i - x_j)] para j neq i
+
+    for i in range(n):
+        # Índices de todos los puntos excepto el i-ésimo
+        indices = [j for j in range(n) if j != i]
+
+        # Construir el polinomio base L_i(x)
+        # Numerador: prod(x - x_j) para j neq i
+        numerador = Polynomial.fromroots(x_data[indices])
+
+        # Denominador: prod(x_i - x_j) para j neq i
+        denominador = np.prod(x_data[i] - x_data[indices])
+
+        # L_i(x) = numerador / denominador
+        L_i = numerador / denominador
+
+        # Agregar el término y_i · L_i(x) al polinomio total
+        poly_total = poly_total + y_data[i] * L_i
+
+    return poly_total
+
+
+def encontrar_resonancia(func, E_min, E_max, num_puntos=10000):
+    """
+    Encuentra la energía de resonancia (máximo de la curva).
+
+    Parámetros:
+    -----------
+    func : funcion interpolada
+    E_min, E_max : float
+        Rango de energías a buscar
+    num_puntos : int
+        Número de puntos para evaluar
+
+    Retorna:
+    --------
+    E_resonancia : float
+        Energía donde ocurre el máximo
+    sigma_max : float
+        Valor máximo de la sección eficaz
+    """
+    E_eval = np.linspace(E_min, E_max, num_puntos)
+    sigma_eval = func(E_eval)
+
+    idx_max = np.argmax(sigma_eval)
+    E_resonancia = E_eval[idx_max]
+    sigma_max = sigma_eval[idx_max]
+
+    return E_resonancia, sigma_max
+
+
+def calcular_fwhm(func, E_resonancia, sigma_max, E_min, E_max):
+    """
+    Calcula el ancho a media altura (FWHM = Gamma).
+
+    FWHM es la diferencia de energías donde sum(E) = sum_max / 2
+
+    Parámetros:
+    -----------
+    func : funcion interpolada
+    E_resonancia : float
+        Energía de resonancia
+    sigma_max : float
+        Valor máximo de sum
+    E_min, E_max : float
+        Límites del rango de búsqueda
+
+    Retorna:
+    --------
+    FWHM : float
+        Ancho a media altura
+    E_left : float
+        Energía del borde izquierdo (sum = sum_max/2)
+    E_right : float
+        Energía del borde derecho (sum = sum_max/2)
+    """
+    sigma_half = sigma_max / 2.0
+
+    # Función auxiliar: sum(E) - sum_max/2
+    def diferencia(E):
+        return func(E) - sigma_half
+
+    # Buscar cruces con sum_max/2
+    # Lado izquierdo: entre E_min y E_resonancia
+    try:
+        E_left = brentq(diferencia, E_min, E_resonancia)
+    except ValueError:
+        # Si no encuentra raíz, usar evaluación numérica
+        E_eval = np.linspace(E_min, E_resonancia, 1000)
+        sigma_eval = func(E_eval)
+        idx = np.argmin(np.abs(sigma_eval - sigma_half))
+        E_left = E_eval[idx]
+
+    # Lado derecho: entre E_resonancia y E_max
+    try:
+        E_right = brentq(diferencia, E_resonancia, E_max)
+    except ValueError:
+        E_eval = np.linspace(E_resonancia, E_max, 1000)
+        sigma_eval = func(E_eval)
+        idx = np.argmin(np.abs(sigma_eval - sigma_half))
+        E_right = E_eval[idx]
+
+    FWHM = E_right - E_left
+
+    return FWHM, E_left, E_right
+
+
+console.rule("[bold red]Programa de interpolación para datos dados:[/bold red]")
+i = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9])
+Ei = np.array([0, 25, 50, 75, 100, 125, 150, 175, 200])  # Energía (MeV)
+fE = np.array(
+    [10.6, 16.0, 45.0, 83.5, 52.8, 19.9, 10.8, 8.25, 4.7]
+)  # Sección eficaz (MeV)
+sigma = np.array(
+    [9.34, 17.9, 41.5, 85.5, 51.5, 21.5, 10.8, 6.29, 4.14]
+)  # Incertidumbre (MeV)
+
+table = Table(title="[bold yellow]Tabla para la sección eficaz[/bold yellow]")
+table.add_column("i", justify="left", style="cyan")
+table.add_column(r"$E_i$", justify="center", style="red")
+table.add_column(r"$f\left(E_i\right)$", justify="center", style="red")
+table.add_column(r"$\sigma_i$", justify="center", style="magenta")
+for s in range(len(i)):
+    table.add_row(f"{i[s]}", f"{Ei[s]:.1f}", f"{fE[s]:.2f}", f"{sigma[s]:.2f}")
+
+console.print(table)
+# Aplicar interpolación de Lagrange
+console.print("\n[cyan]Aplicando interpolación de Lagrange...[/cyan]")
+polinomio = lagrange_interpolation(Ei, fE)
+
+console.print(f"[green] Polinomio interpolador creado exitosamente[/green]")
+console.print(f"[green]  Grado del polinomio: {len(Ei) - 1}[/green]\n")
+
+# Evaluar el polinomio en un rango fino para graficar
+E_range = np.linspace(0, 200, 1000)
+f_interpolada = polinomio(E_range)
+
+# Crear gráfica
+plt.figure(figsize=(12, 7))
+
+# Graficar polinomio interpolador
+plt.plot(
+    E_range,
+    f_interpolada,
+    "-",
+    color="blue",
+    linewidth=2.5,
+    label="Polinomio de Lagrange",
+    alpha=0.8,
+)
+plt.plot(Ei, fE, "o", color="red", label="Datos experimentales")
+
+plt.xlabel("Energía $E_i$ (MeV)", fontsize=13, fontweight="bold")
+plt.ylabel(r"Sección eficaz $f(E_i)$ (mb)", fontsize=13, fontweight="bold")
+plt.title(
+    "Interpolación de Lagrange: Sección Eficaz vs Energía",
+    fontsize=15,
+    fontweight="bold",
+)
+plt.legend(fontsize=11, loc="best")
+plt.grid(True, alpha=0.3)
+plt.tight_layout()
+
+# Guardar la figura
+archivo_salida = os.path.join(output_dir, "interpolacion_lagrange.png")
+plt.savefig(archivo_salida, dpi=300, bbox_inches="tight")
+console.print(f"[green]Gráfica guardada en: {archivo_salida}[/green]")
+
+plt.show()
+
+console.rule("[bold cyan]Análisis de Resonancia[/bold cyan]")
+
+# 1. Encontrar energía de resonancia (máximo)
+E_resonancia, sigma_max = encontrar_resonancia(polinomio, 0, 200)
+
+console.print(f"\n[bold green]1. Energía de Resonancia (Er):[/bold green]")
+console.print(f"   Er = {E_resonancia:.2f} MeV")
+console.print(f"   sum(Er) = {sigma_max:.2f} mb (valor máximo)")
+
+# 2. Calcular FWHM (Gamma)
+FWHM_1, E_left, E_right = calcular_fwhm(polinomio, E_resonancia, sigma_max, 0, 200)
+
+console.print(f"\n[bold green]2. Ancho a Media Altura (FWHM = Gamma):[/bold green]")
+console.print(f"   Gamma = {FWHM_1:.2f} MeV")
+console.print(f"   sum(Er)/2 = {sigma_max/2:.2f} mb")
+console.print(f"   E_izquierda = {E_left:.2f} MeV")
+console.print(f"   E_derecha = {E_right:.2f} MeV")
+
+# 3. Valores teóricos
+Er_teorico = 78.0  # MeV
+Gamma_teorico = 55.0  # MeV
+
+console.print(f"\n[bold yellow]3. Valores Teóricos:[/bold yellow]")
+console.print(f"   Er (teórico) = {Er_teorico:.2f} MeV")
+console.print(f"   Gamma (teórico) = {Gamma_teorico:.2f} MeV")
+
+# 4. Comparación
+error_Er = abs(E_resonancia - Er_teorico)
+error_Gamma = abs(FWHM_1 - Gamma_teorico)
+error_rel_Er = 100 * error_Er / Er_teorico
+error_rel_Gamma = 100 * error_Gamma / Gamma_teorico
+
+console.print(f"\n[bold magenta]4. Comparación con Teoría:[/bold magenta]")
+console.print(f"   Delta Er = {error_Er:.2f} MeV ({error_rel_Er:.1f}%)")
+console.print(f"   Delta Gamma = {error_Gamma:.2f} MeV ({error_rel_Gamma:.1f}%)")
+
+# Tabla comparativa
+console.print("\n")
+tabla_comparacion = Table(
+    title="[bold]Comparación: Experimental vs Teórico[/bold]", box=box.DOUBLE_EDGE
+)
+tabla_comparacion.add_column("Parámetro", style="cyan", justify="left")
+tabla_comparacion.add_column("Experimental", style="green", justify="center")
+tabla_comparacion.add_column("Teórico", style="yellow", justify="center")
+tabla_comparacion.add_column("Error Absoluto", style="red", justify="center")
+tabla_comparacion.add_column("Error Relativo", style="magenta", justify="center")
+
+tabla_comparacion.add_row(
+    "Er (MeV)",
+    f"{E_resonancia:.2f}",
+    f"{Er_teorico:.2f}",
+    f"{error_Er:.2f}",
+    f"{error_rel_Er:.1f}%",
+)
+
+tabla_comparacion.add_row(
+    "Gamma (MeV)",
+    f"{FWHM_1:.2f}",
+    f"{Gamma_teorico:.2f}",
+    f"{error_Gamma:.2f}",
+    f"{error_rel_Gamma:.1f}%",
+)
+
+console.print(tabla_comparacion)
+
+# Ajuste con splines cubicos
+
+
+def cubic_split(x_data, y_data):
+    """ "
+    no hay mucho que decir, solo que regresa el splin
+    """
+    return CubicSpline(x_data, y_data, bc_type="natural")
+
+
+console.print("\n[cyan]Ajustando splines cúbicos...[/cyan]")
+
+# Crear spline cúbico
+# bc_type='natural' impone segunda derivada nula en los extremos
+spline = cubic_split(Ei, fE)
+
+console.print(f"[green]  Spline cúbico creado exitosamente[/green]")
+console.print(
+    f"[green]  Tipo: Spline cúbico con condiciones de frontera naturales[/green]"
+)
+console.print(f"[green]  Segmentos: {len(Ei) - 1} splines cúbicos[/green]\n")
+
+
+console.rule("[bold cyan]Análisis de Resonancia con Splines[/bold cyan]")
+
+# 1. Encontrar energía de resonancia
+Er_spline, sigma_max_spline = encontrar_resonancia(spline, 0, 200)
+
+console.print(f"\n[bold green]1. Energía de Resonancia (Er) - SPLINES:[/bold green]")
+console.print(f"   Er = {Er_spline:.2f} MeV")
+console.print(f"   sum(Er) = {sigma_max_spline:.2f} mb (valor máximo)")
+
+# 2. Calcular FWHM
+FWHM_spline, E_left_spline, E_right_spline = calcular_fwhm(
+    spline, Er_spline, sigma_max_spline, 0, 200
+)
+
+console.print(
+    f"\n[bold green]2. Ancho a Media Altura (FWHM = Gamma) - SPLINES:[/bold green]"
+)
+console.print(f"   Gamma = {FWHM_spline:.2f} MeV")
+console.print(f"   sum(Er)/2 = {sigma_max_spline/2:.2f} mb")
+console.print(f"   E_izquierda = {E_left_spline:.2f} MeV")
+console.print(f"   E_derecha = {E_right_spline:.2f} MeV")
+
+# comparacion con la teoria
+
+Er_teorico = 78.0
+Gamma_teorico = 55.0
+
+console.print(f"\n[bold yellow]3. Valores Teóricos:[/bold yellow]")
+console.print(f"   Er (teórico) = {Er_teorico:.2f} MeV")
+console.print(f"   Gamma (teórico) = {Gamma_teorico:.2f} MeV")
+
+# Errores respecto a teoría
+error_Er_spline = abs(Er_spline - Er_teorico)
+error_Gamma_spline = abs(FWHM_spline - Gamma_teorico)
+error_rel_Er_spline = 100 * error_Er_spline / Er_teorico
+error_rel_Gamma_spline = 100 * error_Gamma_spline / Gamma_teorico
+
+console.print(f"\n[bold magenta]4. Comparación con Teoría (SPLINES):[/bold magenta]")
+console.print(f"   DeltaEr = {error_Er_spline:.2f} MeV ({error_rel_Er_spline:.1f}%)")
+console.print(f"   DeltaGamma = {error_Gamma_spline:.2f} MeV ({error_rel_Gamma_spline:.1f}%)")
+
+f_spline = spline(E_range)
+
+# Crear gráfica
+plt.figure(figsize=(12, 7))
+
+# Graficar polinomio interpolador
+plt.plot(
+    E_range,
+    f_spline,
+    "-",
+    color="blue",
+    linewidth=2.5,
+    label="Spline cubico",
+    alpha=0.8,
+)
+plt.plot(Ei, fE, "o", color="red", label="Datos experimentales")
+
+plt.xlabel("Energía $E_i$ (MeV)", fontsize=13, fontweight="bold")
+plt.ylabel(r"Sección eficaz $f(E_i)$ (mb)", fontsize=13, fontweight="bold")
+plt.title(
+    "Interpolación Spline cubica: Sección Eficaz vs Energía",
+    fontsize=15,
+    fontweight="bold",
+)
+plt.legend(fontsize=11, loc="best")
+plt.grid(True, alpha=0.3)
+plt.tight_layout()
+
+# Guardar la figura
+archivo_salida = os.path.join(output_dir, "interpolacion_spline_cubico.png")
+plt.savefig(archivo_salida, dpi=300, bbox_inches="tight")
+console.print(f"[green]Gráfica guardada en: {archivo_salida}[/green]")
+
+plt.show()
+console.print("\n")
+console.rule("[bold green]RESUMEN[/bold green]")
+
+resumen = Panel(
+    f"""[bold cyan]Resultados con Splines Cúbicos:[/bold cyan]
+
+[yellow]Valores Estimados:[/yellow]
+  • Energía de resonancia: Er = {Er_spline:.2f} MeV
+  • Ancho a media altura: Gamma = {FWHM_spline:.2f} MeV
+  • Sección eficaz máxima: sum_max = {sigma_max_spline:.2f} mb
+
+[yellow]Valores Teóricos:[/yellow]
+  • Er (teórico) = {Er_teorico:.2f} MeV
+  • Gamma (teórico) = {Gamma_teorico:.2f} MeV
+
+[yellow]Comparación con Teoría:[/yellow]
+  • Error en Er: {error_Er_spline:.2f} MeV ({error_rel_Er_spline:.1f}%)
+  • Error en Gamma: {error_Gamma_spline:.2f} MeV ({error_rel_Gamma_spline:.1f}%)
+
+[yellow]Comparación Splines vs Lagrange:[/yellow]
+  • DeltaEr = {abs(Er_spline - E_resonancia):.2f} MeV
+  • DeltaGamma = {abs(FWHM_spline - FWHM_1):.2f} MeV
+
+[green]Ventajas de los Splines Cúbicos:[/green]
+  * Suavidad garantizada (C2} continua)
+  * No sufre oscilaciones de Runge
+  * Mejor estabilidad numérica
+  * Más apropiado para datos experimentales
+  * Comportamiento local (un dato afecta solo 4 segmentos)
+
+[green]Interpretación:[/green]
+  {" :D Excelente concordancia con teoría" if error_rel_Er_spline < 5 and error_rel_Gamma_spline < 10 else " :D Buena concordancia con teoría"}
+  Los splines cúbicos proporcionan una interpolación más suave y
+  estable que el polinomio de Lagrange de grado 8.
+""",
+    title="[bold]Análisis con Splines Cúbicos[/bold]",
+    border_style="green",
+    box=box.DOUBLE,
+)
+
+console.print(resumen)
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
+
+# SUBPLOT 1 
+ax1.plot(E_range, f_interpolada, '-', color='blue', linewidth=2.5,
+         label='Polinomio de Lagrange', alpha=0.8)
+ax1.plot(Ei, fE, 'o', color='red', markersize=8,
+         label='Datos experimentales')
+ax1.set_xlabel('Energía $E_i$ (MeV)', fontsize=13, fontweight='bold')
+ax1.set_ylabel(r'Sección eficaz $f(E_i)$ (mb)', fontsize=13, fontweight='bold')
+ax1.set_title('Interpolación de Lagrange', fontsize=15, fontweight='bold')
+ax1.legend(fontsize=11, loc='best')
+ax1.grid(True, alpha=0.3)
+
+#  SUBPLOT 2 
+ax2.plot(E_range, f_spline, '-', color='green', linewidth=2.5,
+         label='Spline cúbico', alpha=0.8)
+ax2.plot(Ei, fE, 'o', color='red', markersize=8,
+         label='Datos experimentales')
+ax2.set_xlabel('Energía $E_i$ (MeV)', fontsize=13, fontweight='bold')
+ax2.set_ylabel(r'Sección eficaz $f(E_i)$ (mb)', fontsize=13, fontweight='bold')
+ax2.set_title('Interpolación Spline cúbica', fontsize=15, fontweight='bold')
+ax2.legend(fontsize=11, loc='best')
+ax2.grid(True, alpha=0.3)
+
+plt.tight_layout()
+plt.show()
+console.print("\n[bold green]Programa finalizado exitosamente[/bold green]")
+\end{python}
+\begin{python}[Tarea 5: Interpolaciones: minimizado $\chi^2$](style=one-dark){colback=gray!40!black,colframe=blue}|
+"""
+3. Ajuste de la fórmula de resonancia de Breit-Wigner.
+(a) Para la teoría indica que la fórmula de Breit-Wigner debe ajustar
+a los datos de los dos ejercicios anteriores:
+f (E) = fr·Gamma / ((E - Er)^2 + Gamma^2/4)
+
+Su problema consiste en determinar los valores para los parámetros Er, fr y Gamma.
+Se sugiere renombrar los parámetros haciendo
+a1 = fr·Gamma; a2 = ER; a3 = Gamma^2/4; x = E;
+
+para escribir
+g(x) = a1 / ((x - a2)^2 + a3);
+
+y encontrar los parámetros a partir de minimizar chi^2.
+
+(b) Las ecuaciones que obtuvo en el inciso anterior NO son lineales,
+elabore un programa que utilice el método de Newton-Raphson
+multidimensional para la búsqueda de las raíces.
+"""
+import matplotlib.pyplot as plt
+import numpy as np
+from numpy.linalg import solve 
+import pandas as pd
+
+i = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9])
+Ei = np.array([0, 25, 50, 75, 100, 125, 150, 175, 200])  # Energía (MeV)
+fE = np.array(
+    [10.6, 16.0, 45.0, 83.5, 52.8, 19.9, 10.8, 8.25, 4.7]
+)  # Sección eficaz (mb)
+sigma = np.array(
+    [9.34, 17.9, 41.5, 85.5, 51.5, 21.5, 10.8, 6.29, 4.14]
+)  # Incertidumbre (mb)
+
+# -El problema consiste en encontrar el arreglo a = [a_1, a_2, a_3].
+# -Definimos nuestra función g.
+# -x es el punto de evaluación de g.
+def g(a, x):
+    return a[0]/((x - a[1])**2 + a[2])
+
+# -h es un "termino común" en nuestras funciones a minimizar.
+def h(a, x, y, sc):
+    return (y - g(a, x))/(((x - a[1])**2 + a[2])*(sc**2))
+
+# -Definimos f_1
+# -Los arreglos 'x' e 'y' corresponden a los dados experimentales.
+# -El arreglo sc guarda las incertidumbres.
+def f1(a, x, y, sc):
+    n = min(len(x), len(y), len(sc))
+    
+    if n == 0:
+        return 0
+    
+    val = 0.0
+    for i in range(n):
+        val += h(a, x[i], y[i], sc[i])
+        
+    return val
+
+# Definimos f_2
+# -Los arreglos 'x' e 'y' corresponden a los dados experimentales.
+# -El arreglo sc guarda las incertidumbres.
+def f2(a, x, y, sc):
+    n = min(len(x), len(y), len(sc))
+    
+    if n == 0:
+        return 0
+    
+    val = 0.0
+    for i in range(n):
+        val += h(a, x[i], y[i], sc[i])*((x[i] - a[1])/\
+            ((x[i] - a[1])**2 + a[2]))
+        
+    return val
+
+# Definimos f_3
+# -Los arreglos 'x' e 'y' corresponden a los dados experimentales.
+# -El arreglo sc guarda las incertidumbres.
+def f3(a, x, y, sc):
+    n = min(len(x), len(y), len(sc))
+    
+    if n == 0:
+        return 0
+    
+    val = 0.0
+    for i in range(n):
+        val += (h(a, x[i], y[i], sc[i])/
+            ((x[i] - a[1])**2 + a[2]))
+        
+    return val
+
+# -Newton-Raphson multidimensional.
+# -Los arreglos 'x' e 'y' corresponden a los dados experimentales.
+# -El arreglo sc guarda las incertidumbres.
+# -da es un valor pequeño usado para el cálculo de derivadas parciales 
+#  mediante central difference.
+# -epsilon el la precisión que requerimos.
+def NewtonRapshon(a_0, da, x, y, sc, epsilon):
+    Nmax = 1000
+    a = np.array(a_0)
+    
+    Da = list()                         # -Da es un arreglo de la forma 
+    for i in range(3):                  #  Da = [[da/2.0, 0.0, 0.0]
+        diffa = list()                  #        [0.0, da/2.0, 0.0]
+        for j in range(3):              #        [0.0, 0.0, da/2.0]]
+            if j != i:                  #  Este arreglo servira para 
+                diffa.append(0.0)       #  aproximar las derivadas parciales.
+            else:
+                diffa.append(da/2.0)
+        Da.append(diffa)
+    Da = np.array(Da)
+    
+    F = np.array([f1(a, x, y, sc), f2(a, x, y, sc), f3(a, x, y, sc)])
+    
+    for k in range(Nmax):               # -Evitamos ciclos infinitos.
+        NormaF = max(abs(F[0]), abs(F[1]), abs(F[2]))
+        
+        if NormaF <= epsilon:
+            print(f'Convergencia alcanzada en {k} iteraciones.')
+            return a
+        
+        DF = list()
+        for i in range(3):
+            
+            # -Los siguientes 3 if's son para aproximar las derivadas 
+            #  parciales correspondientes.
+            dFi = list()
+            if i == 0:      # -Cálculo del 'gradiente' de f1.
+                for j in range(3):
+                    dFi.append((f1(a + Da[j], x, y, sc)\
+                                - f1(a - Da[j], x, y, sc))/da)
+            if i == 1:      # -Cálculo del 'gradiente' de f2.
+                for j in range(3):
+                    dFi.append((f2(a + Da[j], x, y, sc)\
+                                - f2(a - Da[j], x, y, sc))/da)
+            if i == 2:      # -Cálculo del 'gradiente' de f3.
+                for j in range(3):
+                        dFi.append((f3(a + Da[j], x, y, sc)\
+                                    - f3(a - Da[j], x, y, sc))/da)
+            DF.append(dFi)
+        
+        Diff_F = np.array(DF)          # -Arreglo de "derivadas parciales".
+        
+        # usamos solve() en lugar de inv()
+        try:
+            delta = solve(Diff_F, -F)  # Resolver J·Deltaa = -F
+            a = a + delta              # Actualizar parámetros
+        except np.linalg.LinAlgError:
+            print("Matriz singular, terminando...")
+            return a
+        
+        F[0] = f1(a, x, y, sc)      # -Actualizamos nuestro vector F.
+        F[1] = f2(a, x, y, sc)
+        F[2] = f3(a, x, y, sc)
+        
+    print("No se encontró un valor con suficiente precisión.")
+    return a
+
+# -Leemos los datos del archivo 'DatosBW.txt' y los transformamos a un 
+#  formato conveniente.
+datos = pd.read_csv('DatosBW.txt', header = 0, sep=r'\s+')
+u = datos.iloc[:, 0]
+v = datos.iloc[:, 1]
+w = datos.iloc[:, 2]
+
+x = u.to_numpy()
+y = v.to_numpy()
+sc = w.to_numpy()
+
+# semilla inicial (estimada de los datos)
+idx_max = np.argmax(y)         # Índice del máximo
+E_r_inicial = x[idx_max]        # Energía donde ocurre el máximo (~75 MeV)
+f_max = y[idx_max]         # Valor máximo (~83.5 mb)
+Gamma_inicial = 50.0          # Estimación razonable del ancho
+
+a_0 = np.array([
+    f_max * Gamma_inicial,      # a1 = f_r·Gamma approx 83.5 * 50 = 4175
+    E_r_inicial,                # a2 = E_r approx 75 MeV
+    (Gamma_inicial**2) / 4.0    # a3 = Gamma2}/4 approx 625
+])
+
+print('Semilla inicial:')
+print('  a_1 =', a_0[0], ', a_2 =', a_0[1], ', a_3 =', a_0[2])
+
+# -Cálculo de nuestras a's.
+a = NewtonRapshon(a_0, da=0.1, x=x, y=y, sc=sc, epsilon=0.001) 
+
+print('\nResultados del ajuste:')
+print('a_1 =', a[0], ', a_2 =', a[1], ', a_3 =', a[2])
+print('f_r =', a[0]/np.sqrt(4*a[2]), ', E_r =', a[1], ', Gamma =', 2.0*np.sqrt(a[2]))
+
+# Comparación con teoría
+E_r_teorico = 78.0
+Gamma_teorico = 55.0
+print('\nComparación con teoría:')
+print('E_r: experimental =', a[1], 'MeV, teórico =', E_r_teorico, 'MeV')
+print('Gamma: experimental =', 2.0*np.sqrt(a[2]), 'MeV, teórico =', Gamma_teorico, 'MeV')
+
+# -Imprimimos nuestro ajuste.
+X = np.arange(0.0, 200, 0.1)
+Y = list()
+for i in range(len(X)):
+    Y.append(g(a, X[i]))
+
+# Gráfica
+plt.figure(figsize=(10, 6))
+plt.plot(x, y, 'o', lw=2, color='r', markersize=8, label='Datos experimentales')
+plt.plot(X, Y, '-', lw=2, color='b', label='Ajuste Breit-Wigner')
+plt.axvline(a[1], color='g', linestyle='--', linewidth=2, 
+           label=f'E_r = {a[1]:.2f} MeV', alpha=0.7)
+plt.xlabel('Energía E (MeV)', fontsize=12, fontweight='bold')
+plt.ylabel('Sección eficaz sum(E) (mb)', fontsize=12, fontweight='bold')
+plt.title('Ajuste de Breit-Wigner usando Newton-Raphson', fontsize=14, fontweight='bold')
+plt.legend(fontsize=11)
+plt.grid(True, alpha=0.3)
+plt.show()
+\end{python}
+\section{Minimos cuadrados}
+\begin{python}[Tarea 5: Interpolaciones: Circuito RLC](style=one-dark){colback=gray!40!black,colframe=blue}
+    """
+Cuando una fuente de voltaje se conecta a travÈs de una resistencia y
+un inductor en serie, el voltaje a travÈs del inductor Vi (t) obedece la
+ecuaciÛn
+
+V (t) = V0e
+t
+
+donde t es el tiempo y
+= R
+L
+es el cociente de la resistencia R y la
+inductacia L del circuito. Los datos obtenidos de un experimento son:
+(a) Encuentre el mejo estimado para los valores de
+
+y V0 y las incer-
+tidumbres en sus valores (
+
+y V0
+).
+
+(b) Encuentre el valor de 
+
+2 para su ajuste. øTiene sentido?
+(c) Realice una gr·Öca semi-log para los datos y el ajuste.
+"""
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from rich.console import Console
+from rich.table import Table
+from rich.panel import Panel
+from rich import box
+from scipy.optimize import curve_fit
+import os
+
+output_dir ="resultados_tarea_5"
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
+data = pd.read_csv("datos_circuito.txt", header=0, delim_whitespace=True)
+
+ttime = data.iloc[:,0]
+voltage = data.iloc[:,1]
+uncer = data.iloc[:,2]
+
+# print(np.sum(ttime))
+
+# ttime_np = ttime.to_numpy
+# voltage_np = voltage.to_numpy
+# uncer_np = uncer.to_numpy
+console = Console()
+
+console.rule("[bold blue]Ajuste de Circuito[/bold blue]")
+
+table = Table(title="[bold yellow] Datos experimentales[/bold yellow]",box = box.ROUNDED)
+table.add_column("i", justify="center", style="cyan")
+table.add_column("Tiempo t (ms)", justify="center", style="blue")
+table.add_column("Voltaje V(t) (V)", justify="center", style="green")
+table.add_column("sigma_V (V)", justify="center", style="red")
+
+for i, (ti, Vi, si) in enumerate(zip(ttime, voltage, uncer)):
+    table.add_row(str(i+1), f"{ti:.1f}", f"{Vi:.2f}", f"{si:.3f}")
+
+console.print(table)
+
+console.print("[bold green] Generando grafico de dispersion...")
+
+plt.scatter(ttime , voltage, color = 'r', label = 'Datos del circuito')
+plt.title("Datos originales de la respuesta de un circuito RLC")
+plt.xlabel("Tiempo (ns)")
+plt.ylabel("Voltaje (V)")
+plt.grid(True)
+plt.legend()
+filename = f"{output_dir}/grafico_de_dispersion_RLC.png"
+plt.savefig(filename, dpi = 300, bbox_inches="tight")
+console.print("[bold green] Grafico guardado: ", filename)
+plt.show()
+# Para las incertidumbres asociadas:
+def S(uncertinity):
+    return np.sum(1/(uncertinity**2))
+
+def S_x(uncertinity,xi):
+    return np.sum(xi/(uncertinity**2))
+
+def S_y(uncertinity,yi):
+    return np.sum(yi/(uncertinity**2))
+
+def S_xx(uncertinity,xi):
+    return np.sum((xi**2)/(uncertinity**2))
+
+def S_xy(uncertinity,xi,yi):
+    return np.sum((xi*yi)/(uncertinity**2))
+
+def delta(s,s_xx,s_x):
+    return s*s_xx-(s_x**2)
+
+def sigma_a1(s_xx,delt):
+    """
+    Sigma para ordenada al origen (V0)
+    """
+    return s_xx/delt
+def sigma_a2(s,delt):
+    """"
+    Sigma para pendiente (Gamma)
+    """
+    return s/delt
+def dec_exp(t,v_0,tau):
+    """
+    Modelamos el decaimiento exponencial para los circuitos RL:
+    V(t) = V_0·e^(-Gamma·t)
+    
+    Parámetros:
+    -----------
+    t : float o array
+        Tiempo
+    V0 : float
+        Voltaje inicial (en t=0)
+    tau : float
+        Constante de decaimiento Gamma = R/L
+    
+    Retorna:
+    --------
+    V : float o array
+        Voltaje en el tiempo t
+    """
+    return v_0*np.exp(-tau*t)
+
+console.print("\n[cyan]===========================================[/cyan]")
+console.print("[bold cyan]AJUSTE LINEAL (Linearización)[/bold cyan]")
+console.print("[cyan]===========================================[/cyan]")
+
+ln_v= np.log(voltage)
+sigma_ln_v= uncer/voltage
+
+#por ajustar y=mx+b
+#  y= ln_v, m=- tau, x=t, b = ln(vo)
+# ln_v = - tau*t+ln(vo)
+
+coeficientes = np.polyfit(ttime, ln_v, deg=1, w=1/sigma_ln_v)
+m_linear = coeficientes[0] #pendiente 
+b_linear = coeficientes[1] #ordenada
+
+tau_linear = -m_linear #gamma
+v_0_linear = np.exp(b_linear) #V0
+
+console.print(f"\n[green]Resultados del ajuste lineal:[/green]")
+console.print(f"  V_0 = {v_0_linear:.4f} V")
+console.print(f"  Gamma  = {tau_linear:.4f} ms^{-1}")
+console.print(f"  ln(V_0) = {b_linear:.4f}")
+
+# Calcular R2} para el ajuste lineal
+v_ajuste_linear = dec_exp(ttime, v_0_linear, tau_linear)
+residuos_linear = voltage - v_ajuste_linear
+SS_res = np.sum(residuos_linear**2)
+SS_tot = np.sum((voltage - np.mean(voltage))**2)
+R2_linear = 1 - (SS_res / SS_tot)
+sigma_gamma= sigma_a2(S(uncer), delta(S(uncer),S_xx(uncer,ttime),S_x(uncer, ttime)))
+sigma_vo= sigma_a1(S_xx(uncer, ttime),delta(S(uncer),S_xx(uncer,ttime),S_x(uncer, ttime)))
+console.print(f"  sigma_Gamma = {sigma_gamma:.4f}")
+console.print(f"  sigma_V_0= {sigma_vo:.4f}")
+console.print(f"  R2} = {R2_linear:.6f}")
+
+# obtenemos chi-cuadrado
+
+console.print("\n[cyan]===========================================[/cyan]")
+console.print("[bold cyan](b) BONDAD DEL AJUSTE: chi2}[/bold cyan]")
+console.print("[cyan]===========================================[/cyan]")
+
+# Calcular valores ajustados
+V_ajustado = dec_exp(ttime, v_0_linear, tau_linear)
+
+# Residuos
+residuos = voltage - V_ajustado
+residuos_normalizados = residuos / uncer
+
+# Chi-cuadrado
+chi2 = np.sum(residuos_normalizados**2)
+
+# Grados de libertad: n_datos - n_parámetros
+n_datos = len(ttime)
+n_parametros = 2  # V_0 y Gamma
+grados_libertad = n_datos - n_parametros
+
+# Chi-cuadrado reducido
+chi2_reducido = chi2 / grados_libertad
+
+console.print(f"\n[bold green]Resultados:[/bold green]")
+console.print(f"  chi2} = {chi2:.4f}")
+console.print(f"  Grados de libertad = {grados_libertad}")
+console.print(f"  chi2}_reducido = {chi2_reducido:.4f}")
+
+# Interpretación
+console.print(f"\n[bold yellow]Interpretación:[/bold yellow]")
+if chi2_reducido < 0.5:
+    interpretacion = "[yellow] chi2}_red < 0.5: Posible sobreestimación de errores[/yellow]"
+elif 0.5 <= chi2_reducido <= 2.0:
+    interpretacion = "[green] 0.5 leq chi2}_red leq 2.0: Ajuste excelente[/green]"
+elif 2.0 < chi2_reducido <= 5.0:
+    interpretacion = "[yellow] 2.0 < chi2}_red leq 5.0: Ajuste aceptable, revisar errores[/yellow]"
+else:
+    interpretacion = "[red] chi2}_red > 5.0: Ajuste pobre, modelo incorrecto o errores subestimados[/red]"
+
+console.print(f"  {interpretacion}")
+
+# ¿Tiene sentido?
+console.print(f"\n[bold cyan]¿Tiene sentido?[/bold cyan]")
+if 0.5 <= chi2_reducido <= 2.0:
+    console.print("  [green] SÍ. El modelo exponencial describe bien los datos.[/green]")
+    console.print("  [green]  Los residuos son consistentes con las incertidumbres.[/green]")
+else:
+    console.print("  [yellow] REVISAR. El ajuste puede mejorarse.[/yellow]")
+
+#  sisisis, pero y la fisica ?
+
+console.print("\n[cyan]===========================================[/cyan]")
+console.print("[bold cyan]INTERPRETACIÓN FÍSICA[/bold cyan]")
+console.print("[cyan]===========================================[/cyan]")
+
+# Constante de tiempo: T = 1/Gamma
+T_constante = 1.0 / tau_linear
+sigma_T = sigma_gamma / (tau_linear**2)  # Propagación de error
+
+console.print(f"\n[yellow]Constante de tiempo:[/yellow]")
+console.print(f"  T = 1/Gamma = {T_constante:.4f} ± {sigma_T:.4f} ms")
+console.print(f"  (tiempo para que V decaiga a V_0/e = {v_0_linear/np.e:.3f} V)")
+
+# Vida media: t_1/2 = ln(2)/Gamma
+t_media = np.log(2) / tau_linear
+sigma_t_media = sigma_gamma * np.log(2) / (tau_linear**2)
+
+console.print(f"\n[yellow]Vida media:[/yellow]")
+console.print(f"  t_1/2 = ln(2)/Gamma = {t_media:.4f} ± {sigma_t_media:.4f} ms")
+console.print(f"  (tiempo para que V decaiga a V_0/2 = {v_0_linear/2:.3f} V)")
+
+# Si conocemos R o L, podemos calcular el otro
+console.print(f"\n[yellow]Relación con componentes:[/yellow]")
+console.print(f"  Gamma = R/L")
+console.print(f"  Si R = 100 Omega → L = R/Gamma = {100/tau_linear:.2f} mH")
+console.print(f"  Si L = 10 mH → R = Gamma·L = {tau_linear*10:.2f} Omega")
+
+# sisisis pero y como se ve
+# Creamos un dominio 
+t_dom =  np.linspace(0, 750,1000)
+V_ajustado=dec_exp(t_dom,v_0_linear,tau_linear)
+
+plt.plot(t_dom,V_ajustado, '-', color ='b', linewidth =2.5,
+         label=f'Ajuste: V_0={v_0_linear:.3f} V, Gamma={tau_linear:.3f} ms^{-1}', alpha=0.8)
+plt.plot(ttime , voltage, 'o', color ='r', linewidth =2.5,
+         label=f'Datos experimentales', alpha=0.8)
+plt.yscale('log')
+plt.xlabel('Tiempo t (ms)', fontsize=13, fontweight='bold')
+plt.ylabel('log(Voltaje V(t)) (V)', fontsize=13, fontweight='bold')
+plt.title('Gráfica Semi-Log (Requerida)', fontsize=15, fontweight='bold')
+plt.legend(fontsize=10, loc='upper right')
+plt.grid(True, alpha=0.3, which='both')
+filename = f"{output_dir}/grafico_semilog_RLC.png"
+plt.savefig(filename, dpi = 300, bbox_inches="tight")
+plt.show()
+console.print("[bold green] Grafico guardado: ", filename)
+# popt, pcov = curve_fit(
+#     dec_exp, ttime, 
+#     voltage,p0=[v_0_linear,tau_linear],
+#     sigma = uncer, absolute_sigma=True)
+# errores = np.sqrt(np.diag(pcov))
+# sigma_V=errores[0]
+
+console.print("\n")
+console.rule("[bold green]RESUMEN DE RESULTADOS[/bold green]")
+
+resumen = f"""[bold cyan](a) Parámetros ajustados con incertidumbres:[/bold cyan]
+
+    V_0 = {v_0_linear:.4f} ± {sigma_vo:.4f} V  
+    Gamma  = {tau_linear:.4f} ± {sigma_gamma:.4f} ms^{-1} 
+
+[bold cyan](b) Bondad del ajuste:[/bold cyan]
+
+    chi2} = {chi2:.4f}
+    chi2}_reducido = {chi2_reducido:.4f}
+    
+    {interpretacion.replace('[green]', '').replace('[/green]', '').replace('[yellow]', '').replace('[/yellow]', '').replace('[red]', '').replace('[/red]', '')}
+
+[bold cyan](c) Gráfica semi-log:[/bold cyan]
+
+    * Generada
+    * En escala semi-log, el decaimiento exponencial es una línea recta
+    * Pendiente = -Gamma = {-tau_linear:.4f} ms^{-1}
+
+[bold cyan]Interpretación física:[/bold cyan]
+
+    * Constante de tiempo: T = {T_constante:.4f} ms
+    * Vida media: t_1/2 = {t_media:.4f} ms
+    * Relación: Gamma = R/L
+"""
+
+panel = Panel(
+    resumen,
+    title="[bold]Resultados del Ajuste de Circuito RL[/bold]",
+    border_style="green",
+    box=box.DOUBLE
+)
+
+console.print(panel)
+
+console.print("\n[bold green] Análisis completado exitosamente[/bold green]")
+\end{python}
+\section{Cuerpo negro}
+\begin{python}[Tarea 5: Interpolaciones: Cuerpo negro](style=one-dark){colback=gray!40!black,colframe=blue}
+    """
+Ajuste del Espectro de Cuerpo Negro de Planck - Datos del COBE
+
+Ley de Planck:
+I(nu,T) = (2hnu³/c2}) · 1/(exp(hnu/kT) - 1)
+
+donde:
+  - I(nu,T) = Intensidad espectral (MJy/sr)
+  - nu = Frecuencia (1/cm = cm^{-1})
+  - T = Temperatura (K)
+  - h = Constante de Planck = 6.62607015×10^{-34} J·s
+  - c = Velocidad de la luz = 2.99792458×10^8 m/s
+  - k = Constante de Boltzmann = 1.380649×10^{-23} J/K
+
+Objetivos:
+(a) Graficar datos del COBE y verificar forma de cuerpo negro
+(b) Estimar temperatura T de la radiación cósmica de fondo (CMB)
+"""
+
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.optimize import curve_fit
+from scipy.constants import h, c, k
+import pandas as pd
+from rich.console import Console
+from rich.table import Table
+from rich.panel import Panel
+from rich import box
+import os
+
+output_dir = "resultados_tarea_5"
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
+console = Console()
+
+console.rule("[bold red]AJUSTE DEL ESPECTRO DE CUERPO NEGRO - RADIACIÓN CÓSMICA DE FONDO (COBE)")
+# Constantes fundamentales (valores exactos de CODATA 2018)
+
+h_planck = 6.62607015e-34    # J·s (Constante de Planck)
+c_light = 2.99792458e8       # m/s (Velocidad de la luz)
+k_boltz = 1.380649e-23       # J/K (Constante de Boltzmann)
+
+const = f"""[bold yellow] Valores exactos de CODATA 2018 [/bold yellow]
+    h = {h_planck:.6e} J·s
+    c = {c_light:.6e} m/s
+    k = {k_boltz:.6e} J/K
+"""
+panel = Panel(
+    const,
+    title="[bold]Constantes a usar[/bold]",
+    border_style="green",
+    box=box.DOUBLE
+)
+console.print(panel)
+
+# Leer datos del archivo
+datos = pd.read_csv('Datos_cuerpo_negro.txt', sep=r'\s+')
+
+# Extraer columnas
+nu = datos['nu(I)'].values           # Frecuencia (1/cm = cm^{-1})
+I_nu_T = datos['I(nu_T)'].values   # Intensidad (MJy/sr)
+error = datos['Error'].values     # Error (kJy/sr)
+
+# Convertir error a MJy/sr
+sigma = error / 1000.0
+#error relativo
+error_rel = np.mean(sigma / I_nu_T) * 100
+# Mostrar rango de errores
+console.print(f"Rango de sigma: {sigma.min():.3f} - {sigma.max():.3f} MJy/sr")
+console.print(f"Rango de I: {I_nu_T.min():.3f} - {I_nu_T.max():.3f} MJy/sr")
+
+# Si los errores son muy pequeños (<1% promedio), indica que pueden estar subestimados
+if error_rel < 1.0:
+    console.print(f"\n[yellow] !!!! Los errores parecen subestimados (< 1%)[/yellow]")
+    console.print(f"[yellow]  Esto causará chi2} artificialmente alto D:[/yellow]")
+
+
+#mostramos los datos
+table = Table(title="[bold yellow]Datos del COBE cargados[/bold yellow]", box=box.ROUNDED)
+table.add_column("Número de puntos", justify="center", style="cyan")
+table.add_column("Rango de frecuencias [cm^{-1}]", justify="center", style="cyan")
+table.add_column("Intensidad máxima [MJy/sr]", justify="center", style="cyan")
+table.add_row(str(len(nu)), f"{nu.min():.2f} - {nu.max():.2f}", f"{I_nu_T.max():.3f}")
+console.print(table)
+
+# Mostrar tabla de datos
+console.print("Nuestra tabla es la siguiente:\n", style="blink on blue")
+table = Table(title="[bold cyan] Datos recuperados con panda de COBE.txt[/bold cyan]", box=box.SQUARE)
+table.add_column("i", justify = "right", style = "cyan")
+table.add_column("nu (cm^{-1})", justify = "right", style = "magenta")
+table.add_column("I(nu,T) (MJy/sr)", justify = "right", style = "blue")
+table.add_column("sigma (MJy/sr)", justify = "right", style = "yellow")
+for i in range(len(nu)):
+    table.add_row(f"{i+1}", f"{nu[i]:.2f}", f"{I_nu_T[i]:.3f}", f"{sigma[i]:.3f}")
+console.print(table)
+
+# definimos el modelo que nos ayudara mas adelante
+
+def planck_model(nu_cm, T):
+    """
+    Ley de Planck para la intensidad espectral.
+    
+    I(nu,T) = (2hnu³/c2}) · 1/(exp(hnu/kT) - 1)
+    
+    Parámetros:
+    -----------
+    nu_cm : float o array
+        Frecuencia en cm^{-1} (número de onda)
+    T : float
+        Temperatura en Kelvin
+    
+    Retorna:
+    --------
+    I : float o array
+        Intensidad en MJy/sr
+    
+    Notas:
+    ------
+    Conversión de unidades:
+    - nu (cm^{-1}) → nu (Hz): nu_Hz = nu_cm × c × 100
+    - I (W·m^{-2}·sr^{-1}·Hz^{-1}) → I (MJy/sr): × 1026}
+    """
+    
+    # Convertir frecuencia de cm^{-1} a Hz
+    nu_Hz = nu_cm * c_light * 100  # cm^{-1} → Hz
+    
+    # Calcular exponente (dimensionless)
+    x = (h_planck * nu_Hz) / (k_boltz * T)
+    
+    # Evitar overflow en el exponencial
+    # Para x muy grande, exp(x) - 1 approx exp(x)
+    # Usamos np.expm1(x) = exp(x) - 1 que es más precisa
+    
+    # Ley de Planck en W·m^{-2}·sr^{-1}·Hz^{-1}
+    numerador = 2 * h_planck * nu_Hz**3 / (c_light**2)
+    denominador = np.expm1(x)  # exp(x) - 1
+    
+    I_SI = numerador / denominador  # W·m^{-2}·sr^{-1}·Hz^{-1}
+    
+    # Convertir a MJy/sr
+    # 1 Jy = 10^{-26} W·m^{-2}·Hz^{-1}
+    # 1 MJy = 10^{-20} W·m^{-2}·Hz^{-1}
+    I_MJy = I_SI * 1e20  # MJy/sr
+    
+    return I_MJy
+
+console.rule("[bold green] ¿Se comporta como un cuerpo negro? [/bold green]")
+
+# Encontrar el máximo
+idx_max = np.argmax(I_nu_T)
+nu_max_obs = nu[idx_max]
+I_max_obs = I_nu_T[idx_max]
+
+console.print(f"[green]\nMáximo observado:")
+console.print(f"[green]  nu_max = {nu_max_obs:.2f} cm^{-1}")
+console.print(f"[green]  I_max = {I_max_obs:.3f} MJy/sr")
+
+# Ley de Wien: nu_max = 5.88×101}^o × T (Hz/K)
+# En cm^{-1}: nu_max (cm^{-1}) = (5.88×101}^o × T) / (c × 100)
+# # T_estimado approx nu_max (cm^{-1}) × c × 100 / (5.88×101}^o)
+wien_const = 5.88e10  # Hz/K
+T_wien_estimate = (nu_max_obs * c_light * 100) / wien_const
+
+console.print(f"[green]\nEstimación inicial usando Ley de Wien:")
+console.print(f"[green]  T_wien approx {T_wien_estimate:.2f} K")
+
+# Gráfica preliminar
+plt.scatter(nu,I_nu_T, color='r', label='Datos observados')
+plt.xlabel('Frecuencia nu (cm^{-1})', fontsize=13, fontweight='bold')
+plt.ylabel('Intensidad I(nu,T) (MJy/sr)', fontsize=13, fontweight='bold')
+plt.title('Datos del COBE - Radiación Cósmica de Fondo', 
+             fontsize=15, fontweight='bold')
+plt.legend(fontsize=11)
+plt.tight_layout()
+plt.grid(True, alpha=0.3)
+filename = f"{output_dir}/cuerpo_negro_dipersión.png"
+plt.savefig(filename, dpi=300, bbox_inches="tight")
+console.print(f"[yellow]Guardado: {filename}")
+# Subplot 2: Escala log-log
+# ax2.errorbar(nu, I_nu_T, yerr=sigma, fmt='o', color='green', markersize=6,
+            # capsize=4, elinewidth=1.5, capthick=1.5,
+            # label='Datos COBE', alpha=0.7)
+# ax2.set_xscale('log')
+# ax2.set_yscale('log')
+# ax2.set_xlabel('log(Frecuencia nu) (cm^{-1})', fontsize=13, fontweight='bold')
+# ax2.set_ylabel('log(Intensidad I(nu,T)) (MJy/sr)', fontsize=13, fontweight='bold')
+# ax2.set_title('Escala Log-Log', fontsize=15, fontweight='bold')
+# ax2.legend(fontsize=11)
+# ax2.grid(True, alpha=0.3, which='both')
+plt.show()
+console.print("[bold red]\nEntonces, ¿tiene forma de cuerpo negro?")
+console.print("[bold red]  Sí, los datos medidos por COBE muestran:")
+console.print("[bold red]    - Forma de campana asimétrica característica")
+console.print("[bold red]    - Máximo bien definido")
+console.print("[bold red]    - Decaimiento rápido a bajas y altas frecuencias")
+console.print("[bold red]    - Consistente con la ley de Planck")
+
+# Hagamos minimos cuadrados
+
+console.rule("[bold blue]Ajuste de temperatura por mínimos cuadrados[/bold blue]")
+
+# Valor inicial para temperatura (usar estimación de Wien)
+T_inicial = T_wien_estimate
+
+console.print(f"[blue]\nValor inicial: T₀ = {T_inicial:.2f} K")
+
+# Ajuste con curve_fit
+try:
+    popt, pcov = curve_fit(
+        planck_model,
+        nu,
+        I_nu_T,
+        p0=[T_inicial],
+        sigma=sigma,
+        absolute_sigma=True,
+        maxfev=10000
+    )
+    
+    # Extraer temperatura ajustada
+    T_fit = popt[0]
+    
+    # Extraer incertidumbre
+    sigma_T = np.sqrt(pcov[0, 0])
+    
+    console.print("[bold]  \nResultado del ajuste")
+    console.print(f"[bold blue]\n  T = {T_fit:.4f} ± {sigma_T:.4f} K")
+    console.print(f"[bold blue]Incertidumbre relativa: DeltaT/T = {100*sigma_T/T_fit:.3f}%")
+    
+    # Valor aceptado de la temperatura del CMB
+    T_cmb_accepted = 2.72548  # K (valor del satélite Planck)
+    
+    console.print("[bold]  \nComparacion con el valor aceptado (valor del satélite Planck)")
+    console.print(f"[bold blue]\n  T_ajustado = {T_fit:.4f} ± {sigma_T:.4f} K")
+    console.print(f"[bold blue]  T_aceptado = {T_cmb_accepted:.4f} K (satélite Planck)")
+    console.print(f"[bold blue]  Diferencia = {abs(T_fit - T_cmb_accepted):.4f} K")
+    console.print(f"[bold blue]  Error relativo = {100*abs(T_fit - T_cmb_accepted)/T_cmb_accepted:.2f}%")
+    
+    # if abs(T_fit - T_cmb_accepted) < 3*sigma_T:
+        # console.print(f"[bold green]\n  Consistente dentro de 3sigma")
+    # else:
+        # console.print(f"[bold red]\n No consistente dentro de 3")
+    # Calcular valores ajustados
+    I_ajustado = planck_model(nu, T_fit)
+    
+    # Residuos
+    residuos = I_nu_T - I_ajustado
+    residuos_normalizados = residuos / sigma
+    
+    # Chi-cuadrado
+    chi2 = np.sum(residuos_normalizados**2)
+    grados_libertad = len(nu) - 1  # 1 parámetro (T)
+    chi2_reducido = chi2 / grados_libertad
+    
+    console.print("[bold]\nBondad del ajuste")
+    console.print(f"[bold blue]\n  chi2} = {chi2:.4f}")
+    console.print(f"[bold blue]  Grados de libertad = {grados_libertad}")
+    console.print(f"[bold blue]  chi2}_reducido = {chi2_reducido:.4f}")
+    
+    if 0.5 <= chi2_reducido <= 2.0:
+        console.print(f"[bold green]\n  :D Excelente ajuste (chi2}_red approx 1)")
+    elif chi2_reducido < 0.5:
+        console.print(f"[bold yellow]\n  ! chi2}_red < 0.5: Posible sobreestimación de errores")
+    elif 2.0 < chi2_reducido <= 5.0:
+        console.print(f"[bold yellow]\n  !!!! Ajuste aceptable (revisar errores)")
+    else:
+        console.print(f"[bold red]\n  D: Ajuste pobre (chi2}_red > 5)")
+    
+    # GRÁFICAS FINALES
+    
+    console.rule("Ultimos gráficos")
+    
+    # Crear rango suave para curva
+    nu_suave = np.linspace(nu.min(), nu.max(), 1000)
+    I_suave = planck_model(nu_suave, T_fit)
+    
+    # Crear figura con 3 subplots
+    fig = plt.figure(figsize=(18, 12))
+    gs = fig.add_gridspec(1, 3, hspace=0.3, wspace=0.3)
+    
+    # Subplot 1: Datos y ajuste
+    
+    ax1 = fig.add_subplot(gs[0, 0])
+    
+    # Datos con barras de error
+    ax1.errorbar(nu, I_nu_T, yerr=sigma, fmt='o', color='red', markersize=7,
+                capsize=5, elinewidth=2, capthick=2,
+                label='Datos COBE', zorder=5)
+    
+    # Curva ajustada
+    ax1.plot(nu_suave, I_suave, '-', color='blue', linewidth=3,
+            label=f'Ajuste Planck: T = {T_fit:.3f} K', alpha=0.8)
+    
+    # Máximo teórico
+    nu_max_teorico = nu_suave[np.argmax(I_suave)]
+    ax1.axvline(nu_max_teorico, color='green', linestyle='--', linewidth=2,
+               label=f'nu_max teórico = {nu_max_teorico:.2f} cm^{-1}', alpha=0.6)
+    
+    ax1.set_xlabel('Frecuencia nu (cm^{-1})', fontsize=13, fontweight='bold')
+    ax1.set_ylabel('Intensidad I(nu,T) (MJy/sr)', fontsize=13, fontweight='bold')
+    ax1.set_title('Ajuste del Espectro de Cuerpo Negro', 
+                 fontsize=15, fontweight='bold')
+    ax1.legend(fontsize=10, loc='upper right')
+    ax1.grid(True, alpha=0.3)
+    
+    # Subplot 2: Escala log-log
+    
+    ax2 = fig.add_subplot(gs[0,1])
+    
+    ax2.errorbar(nu, I_nu_T, yerr=sigma, fmt='o', color='red', markersize=7,
+                capsize=5, elinewidth=2, capthick=2,
+                label='Datos COBE', zorder=5)
+    
+    ax2.plot(nu_suave, I_suave, '-', color='blue', linewidth=3,
+            label=f'Ajuste Planck', alpha=0.8)
+    
+    ax2.set_xscale('log')
+    ax2.set_yscale('log')
+    ax2.set_xlabel('log(Frecuencia nu) (cm^{-1})', fontsize=13, fontweight='bold')
+    ax2.set_ylabel('log(Intensidad I(nu,T)) (MJy/sr)', fontsize=13, fontweight='bold')
+    ax2.set_title('Escala Log-Log', fontsize=15, fontweight='bold')
+    ax2.legend(fontsize=10, loc='upper left')
+    ax2.grid(True, alpha=0.3, which='both')
+    
+    # Subplot 3: Comparación con otras temperaturas
+    
+    ax4 = fig.add_subplot(gs[0,2])
+    
+    # Datos
+    ax4.errorbar(nu, I_nu_T, yerr=sigma, fmt='o', color='red', markersize=7,
+                capsize=5, elinewidth=2, capthick=2,
+                label='Datos COBE', zorder=5)
+    
+    # Ajuste óptimo
+    ax4.plot(nu_suave, I_suave, '-', color='blue', linewidth=3,
+            label=f'T = {T_fit:.3f} K (ajuste)', alpha=0.8)
+    
+    # Temperaturas cercanas para comparación
+    T_bajo = T_fit - 0.1
+    T_alto = T_fit + 0.1
+    
+    I_bajo = planck_model(nu_suave, T_bajo)
+    I_alto = planck_model(nu_suave, T_alto)
+    
+    ax4.plot(nu_suave, I_bajo, '--', color='cyan', linewidth=2,
+            label=f'T = {T_bajo:.3f} K', alpha=0.6)
+    ax4.plot(nu_suave, I_alto, '--', color='orange', linewidth=2,
+            label=f'T = {T_alto:.3f} K', alpha=0.6)
+    
+    ax4.set_xlabel('Frecuencia nu (cm^{-1})', fontsize=13, fontweight='bold')
+    ax4.set_ylabel('Intensidad I(nu,T) (MJy/sr)', fontsize=13, fontweight='bold')
+    ax4.set_title('Sensibilidad a la Temperatura', fontsize=15, fontweight='bold')
+    ax4.legend(fontsize=10, loc='upper right')
+    ax4.grid(True, alpha=0.3)
+    
+    plt.suptitle('Análisis Completo del Espectro de Cuerpo Negro - CMB', 
+                fontsize=18, fontweight='bold', y=0.995)
+    filename = f"{output_dir}/ultimos_graficos_cuerpo_negro.png"
+    plt.savefig(filename, dpi=300, bbox_inches="tight")
+    plt.show()
+    
+    console.print("[bold green]\n Gráficas finales generadas")
+    
+    sms= (f"""
+(a) ¿Tienen forma de cuerpo negro?
+      SÍ. Los datos del COBE muestran la forma característica
+      del espectro de Planck para un cuerpo negro.
+
+(b) Temperatura de la radiación cósmica de fondo:
+    
+    T_CMB = {T_fit:.4f} ± {sigma_T:.4f} K
+    
+    Comparación:
+    * Valor ajustado (COBE): {T_fit:.4f} K
+    * Valor aceptado (Planck): {T_cmb_accepted:.4f} K
+    * Diferencia: {abs(T_fit - T_cmb_accepted):.4f} K ({100*abs(T_fit - T_cmb_accepted)/T_cmb_accepted:.2f}%)
+    
+    Bondad del ajuste:
+    * chi2}_reducido = {chi2_reducido:.4f}
+    * {'Excelente ajuste' if 0.5 <= chi2_reducido <= 2.0 else '!!!!! Revisar ajuste'}
+    
+    Interpretación:
+    * La temperatura de ~2.7 K es una reliquia del Big Bang
+    * Corresponde a fotones del universo temprano (380,000 años)
+    * Evidencia fundamental del modelo cosmológico estándar
+    """)
+    panel = Panel(
+    sms,
+    title="[bold]Finalmente:\n[/bold]",
+    border_style="green",
+    box=box.DOUBLE
+    )
+    console.print(panel)
+
+except Exception as e:
+    print(f"\nD: Error en el ajuste: {e}")
+    print("\nPosibles soluciones:")
+    print("  1. Verificar que los datos estén en el formato correcto")
+    print("  2. Ajustar el valor inicial de temperatura")
+    print("  3. Revisar las unidades de los datos")
+\end{python}
 \end{document}
